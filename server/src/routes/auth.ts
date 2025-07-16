@@ -1,87 +1,29 @@
 import express from "express";
 import jwt, { SignOptions } from "jsonwebtoken";
-import { body, validationResult } from "express-validator";
+import { body, check, validationResult } from "express-validator";
 import User from "../models/User";
 import { authMiddleware } from "../middleware/auth";
 import { Request, Response } from "express";
+import {
+  checkAuth,
+  login,
+  signUp,
+  updateProfile,
+} from "@/controllers/user.controller";
 
 const router = express.Router();
 
 // Register new user
 router.post(
-  "/register",
+  "/signup",
   [
-    body("username")
-      .isLength({ min: 3, max: 30 })
-      .withMessage("Username must be between 3 and 30 characters")
-      .matches(/^[a-zA-Z0-9_]+$/)
-      .withMessage(
-        "Username can only contain letters, numbers and underscores"
-      ),
+    body("fullname").notEmpty().withMessage("Full name is required"),
     body("email").isEmail().withMessage("Please provide a valid email"),
     body("password")
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters long"),
   ],
-  async (req: Request, res: Response) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: "Validation failed",
-          errors: errors.array(),
-        });
-      }
-
-      const { username, email, password } = req.body;
-
-      // Check if user already exists
-      const existingUser = await User.findOne({
-        $or: [{ email }, { username }],
-      });
-
-      if (existingUser) {
-        return res.status(409).json({
-          success: false,
-          message: "User with this email or username already exists",
-        });
-      }
-
-      // Create new user
-      const user = new User({
-        username,
-        email,
-        password,
-      });
-
-      await user.save();
-
-      // Generate JWT token
-      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, {
-        expiresIn: process.env.JWT_EXPIRES_IN || "24h",
-      } as SignOptions);
-
-      return res.status(201).json({
-        success: true,
-        message: "User registered successfully",
-        token,
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          avatar: user.avatar,
-          isOnline: user.isOnline,
-        },
-      });
-    } catch (error) {
-      console.error("Registration error:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
-    }
-  }
+  signUp
 );
 
 // Login user
@@ -91,196 +33,139 @@ router.post(
     body("email").isEmail().withMessage("Please provide a valid email"),
     body("password").notEmpty().withMessage("Password is required"),
   ],
-  async (req: Request, res: Response) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: "Validation failed",
-          errors: errors.array(),
-        });
-      }
-
-      const { email, password } = req.body;
-
-      // Find user by email
-      const user = await User.findOne({ email });
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: "Invalid credentials",
-        });
-      }
-
-      // Check password
-      const isPasswordValid = await user.comparePassword(password);
-      if (!isPasswordValid) {
-        return res.status(401).json({
-          success: false,
-          message: "Invalid credentials",
-        });
-      }
-
-      // Update user online status
-      user.isOnline = true;
-      user.lastSeen = new Date();
-      await user.save();
-
-      // Generate JWT token
-      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, {
-        expiresIn: process.env.JWT_EXPIRES_IN || "24h",
-      } as SignOptions);
-
-      return res.json({
-        success: true,
-        message: "Login successful",
-        token,
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          avatar: user.avatar,
-          isOnline: user.isOnline,
-        },
-      });
-    } catch (error) {
-      console.error("Login error:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
-    }
-  }
+  login
 );
 
-// Logout user
-router.post("/logout", authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const user = await User.findById(req.userId);
-    if (user) {
-      user.isOnline = false;
-      user.lastSeen = new Date();
-      await user.save();
-    }
+router.put("update-profile", authMiddleware, updateProfile);
+router.put("check", authMiddleware, checkAuth);
 
-    res.json({
-      success: true,
-      message: "Logout successful",
-    });
-  } catch (error) {
-    console.error("Logout error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-});
+// // Logout user
+// router.post("/logout", authMiddleware, async (req: Request, res: Response) => {
+//   try {
+//     const user = await User.findById(req.userId);
+//     if (user) {
+//       user.isOnline = false;
+//       user.lastSeen = new Date();
+//       await user.save();
+//     }
 
-// Get current user profile
-router.get("/profile", authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const user = await User.findById(req.userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
+//     res.json({
+//       success: true,
+//       message: "Logout successful",
+//     });
+//   } catch (error) {
+//     console.error("Logout error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//     });
+//   }
+// });
 
-    return res.json({
-      success: true,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar,
-        isOnline: user.isOnline,
-        lastSeen: user.lastSeen,
-      },
-    });
-  } catch (error) {
-    console.error("Profile error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-});
+// // Get current user profile
+// router.get("/profile", authMiddleware, async (req: Request, res: Response) => {
+//   try {
+//     const user = await User.findById(req.userId);
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
 
-// Update user profile
-router.put(
-  "/profile",
-  authMiddleware,
-  [
-    body("username")
-      .optional()
-      .isLength({ min: 3, max: 30 })
-      .withMessage("Username must be between 3 and 30 characters")
-      .matches(/^[a-zA-Z0-9_]+$/)
-      .withMessage(
-        "Username can only contain letters, numbers and underscores"
-      ),
-    body("avatar").optional().isURL().withMessage("Avatar must be a valid URL"),
-  ],
-  async (req: Request, res: Response) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: "Validation failed",
-          errors: errors.array(),
-        });
-      }
+//     return res.json({
+//       success: true,
+//       user: {
+//         id: user._id,
+//         username: user.username,
+//         email: user.email,
+//         avatar: user.avatar,
+//         isOnline: user.isOnline,
+//         lastSeen: user.lastSeen,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Profile error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//     });
+//   }
+// });
 
-      const { username, avatar } = req.body;
-      const user = await User.findById(req.userId);
+// // Update user profile
+// router.put(
+//   "/profile",
+//   authMiddleware,
+//   [
+//     body("username")
+//       .optional()
+//       .isLength({ min: 3, max: 30 })
+//       .withMessage("Username must be between 3 and 30 characters")
+//       .matches(/^[a-zA-Z0-9_]+$/)
+//       .withMessage(
+//         "Username can only contain letters, numbers and underscores"
+//       ),
+//     body("avatar").optional().isURL().withMessage("Avatar must be a valid URL"),
+//   ],
+//   async (req: Request, res: Response) => {
+//     try {
+//       const errors = validationResult(req);
+//       if (!errors.isEmpty()) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Validation failed",
+//           errors: errors.array(),
+//         });
+//       }
 
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
+//       const { username, avatar } = req.body;
+//       const user = await User.findById(req.userId);
 
-      // Check if username is taken by another user
-      if (username && username !== user.username) {
-        const existingUser = await User.findOne({ username });
-        if (existingUser) {
-          return res.status(409).json({
-            success: false,
-            message: "Username already taken",
-          });
-        }
-        user.username = username;
-      }
+//       if (!user) {
+//         return res.status(404).json({
+//           success: false,
+//           message: "User not found",
+//         });
+//       }
 
-      if (avatar !== undefined) {
-        user.avatar = avatar;
-      }
+//       // Check if username is taken by another user
+//       if (username && username !== user.username) {
+//         const existingUser = await User.findOne({ username });
+//         if (existingUser) {
+//           return res.status(409).json({
+//             success: false,
+//             message: "Username already taken",
+//           });
+//         }
+//         user.username = username;
+//       }
 
-      await user.save();
+//       if (avatar !== undefined) {
+//         user.avatar = avatar;
+//       }
 
-      return res.json({
-        success: true,
-        message: "Profile updated successfully",
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          avatar: user.avatar,
-          isOnline: user.isOnline,
-        },
-      });
-    } catch (error) {
-      console.error("Profile update error:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
-    }
-  }
-);
+//       await user.save();
+
+//       return res.json({
+//         success: true,
+//         message: "Profile updated successfully",
+//         user: {
+//           id: user._id,
+//           username: user.username,
+//           email: user.email,
+//           avatar: user.avatar,
+//           isOnline: user.isOnline,
+//         },
+//       });
+//     } catch (error) {
+//       console.error("Profile update error:", error);
+//       return res.status(500).json({
+//         success: false,
+//         message: "Internal server error",
+//       });
+//     }
+//   }
+// );
 
 export default router;

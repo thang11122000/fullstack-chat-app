@@ -1,44 +1,37 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IMessage extends Document {
-  sender: mongoose.Types.ObjectId;
-  receiver: mongoose.Types.ObjectId;
-  content: string;
-  messageType: "text" | "image" | "file";
-  isRead: boolean;
-  readAt?: Date;
+  senderId: mongoose.Types.ObjectId;
+  receiverId: mongoose.Types.ObjectId;
+  text: string;
+  image: string;
+  seen: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const messageSchema = new Schema<IMessage>(
   {
-    sender: {
+    senderId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    receiver: {
+    receiverId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    content: {
+    text: {
       type: String,
-      required: true,
       trim: true,
     },
-    messageType: {
+    image: {
       type: String,
-      enum: ["text", "image", "file"],
-      default: "text",
     },
-    isRead: {
+    seen: {
       type: Boolean,
       default: false,
-    },
-    readAt: {
-      type: Date,
     },
   },
   {
@@ -46,8 +39,6 @@ const messageSchema = new Schema<IMessage>(
   }
 );
 
-// Index for better query performance
-messageSchema.index({ sender: 1, receiver: 1, createdAt: -1 });
-messageSchema.index({ receiver: 1, isRead: 1 });
+messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
 
 export default mongoose.model<IMessage>("Message", messageSchema);
