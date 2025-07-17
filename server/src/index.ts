@@ -75,9 +75,11 @@ setupSocketHandlers(io);
 connectDB();
 
 // Start server
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Socket.io server ready`);
-});
+if (process.env.NODE_ENV !== "production") {
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Socket.io server ready`);
+  });
+}
 
-export default app;
+export default server;
