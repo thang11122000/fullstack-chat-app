@@ -1,168 +1,95 @@
 import { validationResult } from "express-validator";
 import { Request, Response } from "express";
-import User from "@/models/User";
-import jwt, { SignOptions } from "jsonwebtoken";
-import cloudinary from "@/lib/cloudinary";
+import { userService } from "../services/userService";
+import { ResponseHelper } from "../utils/response";
+import { asyncHandler } from "../middleware/errorHandler";
 
-export const signUp = async (req: Request, res: Response) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: errors.array(),
-      });
-    }
-
-    const { fullname, email, password, bio } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "User with this email or username already exists",
-      });
-    }
-
-    // Create new user
-    const user = new User({
-      fullname,
-      email,
-      password,
-      bio,
-    });
-
-    await user.save();
-
-    // Generate JWT token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, {
-      expiresIn: process.env.JWT_EXPIRES_IN || "24h",
-    } as SignOptions);
-
-    return res.status(201).json({
-      success: true,
-      message: "User registered successfully",
-      token,
-      user: {
-        id: user._id,
-        fullname: user.fullname,
-        email: user.email,
-        bio: user.bio,
-      },
-    });
-  } catch (error) {
-    console.error("Registration error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+export const signUp = asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return ResponseHelper.validationError(res, errors.array());
   }
-};
 
-export const login = async (req: Request, res: Response) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: errors.array(),
-      });
-    }
+  const { fullname, email, password, bio } = req.body;
 
-    const { email, password } = req.body;
-
-    // Find user by email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
-
-    // Check password
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, {
-      expiresIn: process.env.JWT_EXPIRES_IN || "24h",
-    } as SignOptions);
-
-    return res.json({
-      success: true,
-      message: "Login successful",
-      token,
-      user: user.toJSON(),
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-};
-
-export const checkAuth = async (req: Request, res: Response) => {
-  return res.json({
-    success: true,
-    user: req.user,
+  const result = await userService.createUser({
+    fullname,
+    email,
+    password,
+    bio,
   });
-};
 
-export const updateProfile = async (req: Request, res: Response) => {
-  try {
+  return ResponseHelper.created(
+    res,
+    {
+      token: result.token,
+      user: result.user,
+    },
+    "User registered successfully"
+  );
+});
+
+export const login = asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return ResponseHelper.validationError(res, errors.array());
+  }
+
+  const { email, password } = req.body;
+
+  const result = await userService.authenticateUser({ email, password });
+
+  return ResponseHelper.success(
+    res,
+    {
+      token: result.token,
+      user: result.user,
+    },
+    "Login successful"
+  );
+});
+
+export const checkAuth = asyncHandler(async (req: Request, res: Response) => {
+  const user = await userService.getUserById(req.user._id);
+  return ResponseHelper.success(res, { user }, "Authentication successful");
+});
+
+export const updateProfile = asyncHandler(
+  async (req: Request, res: Response) => {
     const { fullname, email, bio, profilePic } = req.body;
 
-    // Validate input
+    // Basic validation
     if (!fullname || !email) {
-      return res.status(400).json({
-        success: false,
-        message: "Full name and email are required",
-      });
+      return ResponseHelper.error(res, "Full name and email are required", 400);
     }
 
-    const userId = req.user._id;
-    let updatedUser;
-
-    if (profilePic) {
-      const upload = await cloudinary.uploader.upload(profilePic, {
-        folder: "chat-app",
-      });
-      updatedUser = await User.findByIdAndUpdate(userId, {
-        fullname,
-        email,
-        bio,
-        profilePic: upload.secure_url,
-      });
-    } else {
-      updatedUser = await User.findByIdAndUpdate(
-        userId,
-        { fullname, email, bio },
-        { new: true }
-      );
-    }
-
-    return res.json({
-      success: true,
-      message: "Profile updated successfully",
-      user: updatedUser,
+    const updatedUser = await userService.updateUser(req.user._id, {
+      fullname,
+      email,
+      bio,
+      profilePic,
     });
-  } catch (error) {
-    console.error("Update profile error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+
+    return ResponseHelper.success(
+      res,
+      { user: updatedUser },
+      "Profile updated successfully"
+    );
   }
-};
+);
+
+export const getUsersForSidebar = asyncHandler(
+  async (req: Request, res: Response) => {
+    const users = await userService.getUsersForSidebar(req.user._id);
+    return ResponseHelper.success(
+      res,
+      { users },
+      "Users retrieved successfully"
+    );
+  }
+);
+
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  await userService.updateUserOnlineStatus(req.user._id, false);
+  return ResponseHelper.success(res, null, "Logout successful");
+});

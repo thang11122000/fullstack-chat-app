@@ -7,6 +7,8 @@ export interface IUser extends Document {
   password: string;
   profilePic?: string;
   bio?: string;
+  isOnline?: boolean;
+  lastSeen?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -41,6 +43,14 @@ const userSchema = new Schema<IUser>(
     bio: {
       type: String,
       default: "",
+    },
+    isOnline: {
+      type: Boolean,
+      default: false,
+    },
+    lastSeen: {
+      type: Date,
+      default: Date.now,
     },
   },
   {
