@@ -98,8 +98,8 @@ const Sidebar: React.FC = () => {
             className={`relative flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition group
               ${
                 selectedUser?._id === user._id
-                  ? "bg-indigo-100 text-indigo-700 shadow"
-                  : "hover:bg-blue-50 dark:hover:bg-indigo-900/40 hover:text-indigo-700 dark:hover:text-white"
+                  ? "bg-indigo-900/40 shadow"
+                  : "hover:bg-blue-50 dark:hover:bg-indigo-900/40 hover dark:hover:text-white"
               }
             `}
           >
@@ -119,7 +119,7 @@ const Sidebar: React.FC = () => {
               )}
             </div>
             {unreadMessages[user._id] > 0 && (
-              <span className="bg-violet-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full absolute top-2 right-4 shadow">
+              <span className="bg-violet-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full absolute top-1/2 transform -translate-y-1/2 right-4 shadow">
                 {unreadMessages[user._id]}
               </span>
             )}

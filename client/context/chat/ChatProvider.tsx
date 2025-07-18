@@ -82,13 +82,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const subscribeToMessages = useCallback(() => {
     if (!socket) return;
     socket.on("message_received", (newMessage: Message) => {
-      console.log(selectedUser, selectedUser?._id, newMessage);
-
       if (selectedUser && selectedUser._id === newMessage.senderId) {
         newMessage.seen = true;
-        console.log(true);
         setMessages((prev) => [...prev, newMessage]);
-        axios.put(`/api/message/mark/${newMessage._id}`);
+        axios.put(`/api/messages/mark-seen/${newMessage._id}`);
       } else {
         setUnreadMessages((prev) => ({
           ...prev,

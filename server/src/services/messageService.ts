@@ -208,9 +208,8 @@ export class MessageService {
       if (!message) {
         throw createError("Message not found", 404);
       }
-
       // Only the receiver can mark a message as seen
-      if (message.receiverId.toString() !== userId) {
+      if (message.receiverId.toString() !== userId.toString()) {
         throw createError("Unauthorized to mark this message as seen", 403);
       }
 

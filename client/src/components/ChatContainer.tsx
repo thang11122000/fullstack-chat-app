@@ -159,7 +159,7 @@ const ChatContainer: React.FC = () => {
             }}
             type="text"
             placeholder="Send a message..."
-            className="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm"
+            className="w-full bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm"
           />
           <input
             onChange={handleSendImage}
@@ -172,7 +172,11 @@ const ChatContainer: React.FC = () => {
             htmlFor="image"
             className="cursor-pointer hover:scale-110 transition ml-2"
           >
-            <img src={assets.gallery_icon} alt="Gửi ảnh" className="w-5" />
+            <img
+              src={assets.gallery_icon}
+              alt="Gửi ảnh"
+              className="w-5 min-w-5"
+            />
           </label>
         </div>
         <button
@@ -182,7 +186,7 @@ const ChatContainer: React.FC = () => {
           <img
             src={assets.send_button}
             alt="Gửi"
-            className="w-7 hover:scale-110 cursor-pointer"
+            className="min-w-7 w-7 hover:scale-110 cursor-pointer"
           />
         </button>
       </form>
