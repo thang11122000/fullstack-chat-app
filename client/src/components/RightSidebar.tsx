@@ -30,44 +30,62 @@ const RightSidebar: React.FC = () => {
   return (
     selectedUser && (
       <div
-        className={`bg-[#8185b2]/10 text-white w-full relative overflow-scroll ${
+        className={`h-full flex flex-col bg-white/90 dark:bg-[#23213a] shadow-lg text-gray-900 overflow-hidden dark:text-white w-full relative transition-all duration-300 ${
           selectedUser ? "max-md:hidden" : ""
         }`}
       >
-        <div className="pt-16 flex flex-col item-center gap-2 text-xs font-light mx-auto">
+        {/* User Info */}
+        <div className="pt-12 pb-4 flex flex-col items-center gap-2">
           <img
             src={selectedUser?.profilePic || assets.avatar_icon}
             alt=""
-            className="w-20 aspect-[1/1] rounded-full"
+            className="w-24 h-24 rounded-full object-cover border-4 border-indigo-400 shadow mx-auto"
           />
-          <h1 className="px-10 text-xl font-medium mx-auto flex items-center gap-2">
-            {onlineUsers.includes(selectedUser._id) ? (
-              <span className="text-green-400 text-xs">Online</span>
-            ) : null}
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 mt-2">
+            {onlineUsers.includes(selectedUser._id) && (
+              <span className="text-green-500 text-xs font-medium">●</span>
+            )}
             {selectedUser.fullname}
           </h1>
-          <p className="px-10 mx-auto">{selectedUser.bio}</p>
+          {selectedUser.bio && (
+            <p className="text-gray-500 dark:text-gray-300 text-center text-sm px-6 mt-1">
+              {selectedUser.bio}
+            </p>
+          )}
         </div>
-        <hr className="border-[#ffffff50] my-4" />
-        <div className="px-5 text-xs">
-          <p>Media</p>
-          <div className="mt-2 max-h-[200px] overflow-y-scroll grid grid-cols-2 gap-4 opacity-80">
+        <hr className="border-gray-200 dark:border-gray-700 my-2 mx-6" />
+        {/* Media */}
+        <div className="flex-1 overflow-y-auto px-6 pb-24">
+          <p className="font-semibold text-gray-700 dark:text-gray-200 mb-2">
+            Media
+          </p>
+          <div className="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto">
+            {images.length === 0 && (
+              <span className="text-xs text-gray-400 col-span-2">
+                No media yet.
+              </span>
+            )}
             {images.map((image: string, index: number) => (
               <div
                 key={index}
-                className="cursor-pointer rounded"
+                className="cursor-pointer rounded-lg border border-indigo-100 dark:border-indigo-900 shadow hover:scale-105 transition overflow-hidden"
                 onClick={() => {
                   window.open(image, "_blank");
                 }}
               >
-                <img src={image} alt="" className="h-full rounded-md" />
+                <img
+                  src={image}
+                  alt="media"
+                  className="w-full h-24 object-cover"
+                />
               </div>
             ))}
           </div>
         </div>
+        {/* Logout Button */}
         <button
           onClick={logout}
-          className="absolute bottom-5 bg-gradient-to-r from-purple-400 to-violet-600 text-white border-none text-sm font-light py-2 px-20 rounded-full cursor-pointer"
+          className="cursor-pointer bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-400 hover:to-violet-500 text-white font-semibold py-1.5 px-10 rounded-full shadow-lg transition absolute bottom-2 left-1/2 -translate-x-1/2"
         >
           Logout
         </button>

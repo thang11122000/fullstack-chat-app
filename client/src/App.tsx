@@ -10,7 +10,7 @@ const App = () => {
   const hasAuth = !isAuthLoading && authUser;
 
   return (
-    <div className="bg-[url('/bgImage.svg')] bg-cover bg-center w-full h-full">
+    <div className="h-full w-full bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-[#23213a] dark:to-indigo-900">
       <Toaster />
       <Routes>
         <Route path="/" element={hasAuth && <Homepage />} />
