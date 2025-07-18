@@ -1,32 +1,68 @@
-import React, { useContext, useState } from "react";
+import React, { useState, useEffect } from "react";
 import assets from "../assets/assets";
-import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../context/AuthContext";
+import { useAuth } from "../../context/auth/AuthContext";
+import { NavLink } from "react-router-dom";
 
 const Profile = () => {
-  const { authUser, updateProfile } = useContext(AuthContext);
-  const navigate = useNavigate();
+  const { authUser, updateProfile } = useAuth();
 
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [name, setName] = useState(authUser?.fullName || "");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [name, setName] = useState(authUser?.fullname || "");
   const [bio, setBio] = useState(authUser?.bio || "");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  useEffect(() => {
     if (!selectedImage) {
-      await updateProfile({ fullName: name, bio });
-      navigate("/");
+      setPreviewUrl(null);
       return;
     }
+    const objectUrl = URL.createObjectURL(selectedImage);
+    setPreviewUrl(objectUrl);
 
-    const reader = new FileReader();
-    reader.readAsDataURL(selectedImage);
-    reader.onload = async () => {
-      const base64Image = reader.result;
-      await updateProfile({ fullName: name, bio, profilePic: base64Image });
-      navigate("/");
+    return () => {
+      URL.revokeObjectURL(objectUrl);
     };
+  }, [selectedImage]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (!selectedImage) {
+        await updateProfile({ fullname: name, bio });
+        setLoading(false);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.readAsDataURL(selectedImage);
+      reader.onload = async () => {
+        const base64Image =
+          typeof reader.result === "string" ? reader.result : undefined;
+        try {
+          if (base64Image) {
+            await updateProfile({
+              fullname: name,
+              bio,
+              profilePic: base64Image,
+            });
+          } else {
+            await updateProfile({ fullname: name, bio });
+          }
+        } catch {
+          console.log("Update failed!");
+        }
+        setLoading(false);
+      };
+      reader.onerror = () => {
+        setLoading(false);
+      };
+    } catch (error) {
+      console.log(error);
+      setLoading(false);
+    }
   };
 
   return (
@@ -36,7 +72,7 @@ const Profile = () => {
           onSubmit={handleSubmit}
           className="flex flex-col gap-5 p-10 flex-1"
         >
-          <h3 className="text-lg">Profile Details</h3>
+          <h3 className="text-xl">Profile Details</h3>
           <label
             htmlFor="avatar"
             className="flex items-center gap-3 cursor-pointer"
@@ -46,18 +82,23 @@ const Profile = () => {
               id="avatar"
               accept=".jpg, .jpeg, .png"
               hidden
-              onChange={(e) => setSelectedImage(e.target.files[0])}
+              disabled={loading}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                if (e.target.files && e.target.files[0]) {
+                  setSelectedImage(e.target.files[0]);
+                }
+              }}
             />
             <img
               src={
-                selectedImage
-                  ? URL.createObjectURL(selectedImage)
-                  : assets.avatar_icon
+                previewUrl
+                  ? previewUrl
+                  : authUser?.profilePic || assets.avatar_icon
               }
               alt=""
-              className={`w-12 h-12 ${selectedImage && "rounded-full"}`}
+              className={`w-12 h-12 rounded-full`}
             />
-            upload profile picture
+            Upload profile picture
           </label>
           <input
             type="text"
@@ -66,6 +107,7 @@ const Profile = () => {
             className="p-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            disabled={loading}
           />
           <textarea
             rows={4}
@@ -74,13 +116,18 @@ const Profile = () => {
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             required
+            disabled={loading}
           ></textarea>
           <button
             type="submit"
             className="bg-gradient-to-r from-purple-400 to-violet-600 text-white py-2 rounded-full text-lg cursor-pointer"
+            disabled={loading}
           >
-            Save
+            {loading ? "Saving..." : "Save"}
           </button>
+          <NavLink to="/" className="text-gray-400 underline">
+            ← Back to Chat
+          </NavLink>
         </form>
         <img
           src={authUser?.profilePic || assets.logo_icon}

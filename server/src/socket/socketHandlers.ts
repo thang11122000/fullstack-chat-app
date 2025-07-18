@@ -10,19 +10,26 @@ interface AuthenticatedSocket extends Socket {
   user?: any;
 }
 
+// Khai báo biến toàn cục
+export const onlineUsers = new Map<string, Set<string>>();
+
+async function emitOnlineUsers(io: Server) {
+  const userIds = Array.from(onlineUsers.keys());
+  io.emit("getOnlineUsers", userIds);
+}
+
 export const setupSocketHandlers = (io: Server) => {
   // Authentication middleware
   io.use(async (socket: AuthenticatedSocket, next) => {
     try {
       const token = socket.handshake.auth.token;
-
+      console.log(token);
       if (!token) {
         return next(new Error("Authentication error"));
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
       const user = await User.findById(decoded.userId);
-
       if (!user) {
         return next(new Error("User not found"));
       }
@@ -36,13 +43,17 @@ export const setupSocketHandlers = (io: Server) => {
   });
 
   io.on("connection", (socket: AuthenticatedSocket) => {
-    console.log(`User ${socket.user.username} connected`);
+    console.log(`User ${socket.user.fullname} connected`);
 
-    // Join user to their own room
-    socket.join(socket.userId!);
-
-    // Update user online status
-    updateUserOnlineStatus(socket.userId!, true);
+    if (socket.userId) {
+      if (!onlineUsers.has(socket.userId)) {
+        onlineUsers.set(socket.userId, new Set());
+      }
+      onlineUsers.get(socket.userId)!.add(socket.id);
+      console.log(onlineUsers);
+      socket.join(socket.userId);
+      emitOnlineUsers(io); // Gửi danh sách user online mới nhất
+    }
 
     // Handle joining a chat room
     socket.on("join_chat", (chatId: string) => {
@@ -109,10 +120,12 @@ export const setupSocketHandlers = (io: Server) => {
             chatId: chat._id,
           });
 
-          io.to(receiverId).emit("message_received", {
-            message,
-            chatId: chat._id,
-          });
+          // Gửi socket event nếu receiver đang online
+          if (onlineUsers.has(receiverId)) {
+            for (const socketId of onlineUsers.get(receiverId)!) {
+              io.to(socketId).emit("message_received", { message });
+            }
+          }
 
           // Emit chat update to both users
           io.to(socket.userId!).emit("chat_updated", chat);
@@ -195,19 +208,16 @@ export const setupSocketHandlers = (io: Server) => {
     // Handle user disconnect
     socket.on("disconnect", () => {
       console.log(`User ${socket.user.username} disconnected`);
-      updateUserOnlineStatus(socket.userId!, false);
+      if (socket.userId) {
+        const userSockets = onlineUsers.get(socket.userId);
+        if (userSockets) {
+          userSockets.delete(socket.id);
+          if (userSockets.size === 0) {
+            onlineUsers.delete(socket.userId);
+          }
+        }
+        emitOnlineUsers(io); // Gửi lại khi có user offline
+      }
     });
   });
-};
-
-// Helper function to update user online status
-const updateUserOnlineStatus = async (userId: string, isOnline: boolean) => {
-  try {
-    await User.findByIdAndUpdate(userId, {
-      isOnline,
-      lastSeen: new Date(),
-    });
-  } catch (error) {
-    console.error("Error updating user online status:", error);
-  }
 };

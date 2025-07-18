@@ -12,7 +12,7 @@ export interface CreateMessageData {
 }
 
 export interface MessageResponse {
-  id: string;
+  _id: string;
   senderId: string;
   receiverId: string;
   text?: string;
@@ -312,7 +312,7 @@ export class MessageService {
 
   private formatMessageResponse(message: IMessage | any): MessageResponse {
     return {
-      id: message._id.toString(),
+      _id: message._id.toString(),
       senderId: message.senderId.toString(),
       receiverId: message.receiverId.toString(),
       text: message.text,

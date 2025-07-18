@@ -50,22 +50,19 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const checkAuth = asyncHandler(async (req: Request, res: Response) => {
-  const user = await userService.getUserById(req.user._id);
-  return ResponseHelper.success(res, { user }, "Authentication successful");
+  return ResponseHelper.success(
+    res,
+    { user: req.user },
+    "Authentication successful"
+  );
 });
 
 export const updateProfile = asyncHandler(
   async (req: Request, res: Response) => {
-    const { fullname, email, bio, profilePic } = req.body;
-
-    // Basic validation
-    if (!fullname || !email) {
-      return ResponseHelper.error(res, "Full name and email are required", 400);
-    }
+    const { fullname, bio, profilePic } = req.body;
 
     const updatedUser = await userService.updateUser(req.user._id, {
       fullname,
-      email,
       bio,
       profilePic,
     });

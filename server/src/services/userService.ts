@@ -24,7 +24,7 @@ export interface LoginData {
 }
 
 export interface UserResponse {
-  id: string;
+  _id: string;
   fullname: string;
   email: string;
   bio?: string;
@@ -135,20 +135,6 @@ export class UserService {
         }
       }
 
-      // Check if email is being updated and not already taken
-      if (updateData.email && updateData.email !== user.email) {
-        const existingUser = await User.findOne({
-          email: updateData.email.toLowerCase(),
-          _id: { $ne: userId },
-        });
-
-        if (existingUser) {
-          throw createError("Email already in use", 409);
-        }
-
-        updateData.email = updateData.email.toLowerCase();
-      }
-
       // Update user
       const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
         new: true,
@@ -219,7 +205,7 @@ export class UserService {
 
   private formatUserResponse(user: IUser): UserResponse {
     return {
-      id: user._id as string,
+      _id: user._id as string,
       fullname: user.fullname,
       email: user.email,
       bio: user.bio,

@@ -27,11 +27,7 @@ router.post(
       .normalizeEmail(),
     body("password")
       .isLength({ min: 6 })
-      .withMessage("Password must be at least 6 characters long")
-      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-      .withMessage(
-        "Password must contain at least one uppercase letter, one lowercase letter, and one number"
-      ),
+      .withMessage("Password must be at least 6 characters long"),
     body("bio")
       .optional()
       .isLength({ max: 200 })
@@ -57,7 +53,12 @@ router.post(
 router.get("/check", authMiddleware, checkAuth);
 
 // Update profile
-router.put("/profile", authMiddleware, updateProfile);
+router.put(
+  "/profile",
+  authMiddleware,
+  [body("fullname").trim().notEmpty().withMessage("Full name is required")],
+  updateProfile
+);
 
 // Logout user
 router.post("/logout", authMiddleware, logout);

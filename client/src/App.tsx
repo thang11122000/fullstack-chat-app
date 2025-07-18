@@ -1,30 +1,21 @@
-import React, { useContext } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import Homepage from "./pages/Homepage";
 import LoginPage from "./pages/LoginPage";
 import Profile from "./pages/Profile";
 import { Toaster } from "react-hot-toast";
-import { AuthContext } from "../context/AuthContext";
+import { useAuth } from "../context/auth/AuthContext";
 
 const App = () => {
-  const { authUser } = useContext(AuthContext);
+  const { authUser, isAuthLoading } = useAuth();
+  const hasAuth = !isAuthLoading && authUser;
 
   return (
-    <div className="bg-[url('/bgImage.svg')]">
+    <div className="bg-[url('/bgImage.svg')] bg-cover bg-center w-full h-full">
+      <Toaster />
       <Routes>
-        <Toaster />
-        <Route
-          path="/"
-          element={authUser ? <Homepage /> : <Navigate to={"/login"} />}
-        />
-        <Route
-          path="/login"
-          element={!authUser ? <LoginPage /> : <Navigate to={"/"} />}
-        />
-        <Route
-          path="/profile"
-          element={authUser ? <Profile /> : <Navigate to={"/login"} />}
-        />
+        <Route path="/" element={hasAuth && <Homepage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/profile" element={hasAuth && <Profile />} />
       </Routes>
     </div>
   );

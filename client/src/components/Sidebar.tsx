@@ -1,35 +1,34 @@
-import React, { useContext, useEffect, useState } from "react";
-import assets, { userDummyData } from "../assets/assets";
+import React, { useEffect, useState } from "react";
+import assets from "../assets/assets";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../context/AuthContext";
-import { ChatContext } from "../../context/ChatContext";
+import { useChat } from "../../context/chat/useChat";
+import { useAuth } from "../../context/auth/AuthContext";
 
-interface SidebarProps {
-  selectedUser: any;
-  setSelectedUser: (user: any) => void;
+// Define User type for clarity
+interface User {
+  _id: string;
+  fullname: string;
+  profilePic?: string;
+  bio?: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ selectedUser, setSelectedUser }) => {
-  const { logout, onlineUsers } = useContext(AuthContext);
+const Sidebar: React.FC = () => {
+  const { logout, onlineUsers } = useAuth();
   const {
     getUsers,
     users,
     selectedUser,
-    setSelectedUse,
+    setSelectedUser,
     unreadMessages,
     setUnreadMessages,
-    getChats,
-    chats,
-    sendMessage,
-    messageSender,
-  } = useContext(ChatContext);
+  } = useChat();
 
   const navigate = useNavigate();
-  const [input, setInput] = useState(false);
+  const [input, setInput] = useState("");
 
   const filterUsers = input
     ? users.filter((user) =>
-        user.fullName.toLowerCase().includes(input.toLowerCase())
+        user.fullname.toLowerCase().includes(input.toLowerCase())
       )
     : users;
 
@@ -46,13 +45,9 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedUser, setSelectedUser }) => {
       <div className="pb-5">
         <div className="flex justify-between items-center">
           <img src={assets.logo} alt="logo" className="max-w-40" />
-          <div className="relative py-2 group">
-            <img
-              src={assets.menu_icon}
-              alt="logo"
-              className="max-h-5 cursor-pointer"
-            />
-            <div className="absolute top-full right-0 z-20 w-32 p-5 rounded-md bg-[#282142] border border-gray-600 text-gray-100 hidden group-hover:block">
+          <div className="relative group w-5 h-5 block p-0.5">
+            <img src={assets.menu_icon} alt="logo" className="cursor-pointer" />
+            <div className="absolute top-[100%] right-0 z-20 w-32 p-5 rounded-md bg-[#282142] border border-gray-600 text-gray-100 hidden group-hover:block">
               <p
                 onClick={() => navigate("/profile")}
                 className="cursor-pointer text-sm"
@@ -79,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedUser, setSelectedUser }) => {
       </div>
 
       <div className="flex flex-col">
-        {filterUsers.map((user, index) => (
+        {filterUsers.map((user: User) => (
           <div
             key={user._id}
             onClick={() => {
@@ -96,14 +91,14 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedUser, setSelectedUser }) => {
               className="w-[35px] aspect-[1/1] rounded-full"
             />
             <div className="flex flex-col leading-5">
-              <p>{user.fullName}</p>
+              <p>{user.fullname}</p>
               {onlineUsers.includes(user._id) ? (
                 <span className="text-green-400 text-xs">Online</span>
               ) : (
                 <span className="text-neutral-400 text-xs">Offline</span>
               )}
             </div>
-            {unreadMessages[user._id] && (
+            {unreadMessages[user._id] > 0 && (
               <p className="absolute top-4 right-4 text-xs h-5 w-5 flex justify-center items-center rounded-full bg-violet-500/50">
                 {unreadMessages[user._id]}
               </p>

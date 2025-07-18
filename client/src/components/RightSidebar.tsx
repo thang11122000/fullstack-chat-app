@@ -1,15 +1,31 @@
-import React, { useContext, useEffect, useState } from "react";
-import assets, { imagesDummyData } from "../assets/assets";
-import { ChatContext } from "../../context/ChatContext";
+import React, { useEffect, useState } from "react";
+import assets from "../assets/assets";
+import { useChat } from "../../context/chat/useChat";
+import { useAuth } from "../../context/auth/AuthContext";
 
-const RightSidebar = () => {
-  const { selectedUser, messages } = useContext(ChatContext);
-  const { logout, onlineUsers } = useContext(ChatContext);
-  const [images, setImages] = useState([]);
+// Add User and Message types
+interface Message {
+  _id: string;
+  senderId: string;
+  receiverId: string;
+  text?: string;
+  image?: string;
+  seen: boolean;
+  createdAt: string;
+}
+
+const RightSidebar: React.FC = () => {
+  const { logout, onlineUsers } = useAuth();
+  const { selectedUser, messages } = useChat();
+  const [images, setImages] = useState<string[]>([]);
 
   useEffect(() => {
-    setImages(messages.filter((msg) => msg.image).map((msg) => msg.image));
-  }, []);
+    setImages(
+      messages
+        .filter((msg: Message) => msg.image)
+        .map((msg: Message) => msg.image!)
+    );
+  }, [messages]);
 
   return (
     selectedUser && (
@@ -28,7 +44,7 @@ const RightSidebar = () => {
             {onlineUsers.includes(selectedUser._id) ? (
               <span className="text-green-400 text-xs">Online</span>
             ) : null}
-            {selectedUser.fullName}
+            {selectedUser.fullname}
           </h1>
           <p className="px-10 mx-auto">{selectedUser.bio}</p>
         </div>
@@ -36,7 +52,7 @@ const RightSidebar = () => {
         <div className="px-5 text-xs">
           <p>Media</p>
           <div className="mt-2 max-h-[200px] overflow-y-scroll grid grid-cols-2 gap-4 opacity-80">
-            {images.map((image, index) => (
+            {images.map((image: string, index: number) => (
               <div
                 key={index}
                 className="cursor-pointer rounded"
@@ -51,7 +67,7 @@ const RightSidebar = () => {
         </div>
         <button
           onClick={logout}
-          className="absolute bottom-5 right-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-400 to-violet-600 text-white border-none text-sm font-light py-2 px-20 rounded-full cursor-pointer"
+          className="absolute bottom-5 bg-gradient-to-r from-purple-400 to-violet-600 text-white border-none text-sm font-light py-2 px-20 rounded-full cursor-pointer"
         >
           Logout
         </button>

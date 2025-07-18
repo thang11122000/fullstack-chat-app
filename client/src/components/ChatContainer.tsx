@@ -1,21 +1,23 @@
-import React, { useContext, useEffect } from "react";
-import assets, { messagesDummyData } from "../assets/assets";
+import React, { useEffect, useRef, useState } from "react";
+import assets from "../assets/assets";
 import { formatMessageTime } from "../lib/utils";
-import { AuthContext } from "../../context/AuthContext";
-import { ChatContext } from "../../context/ChatContext";
+import { useChat } from "../../context/chat/useChat";
 import toast from "react-hot-toast";
+import { useAuth } from "../../context/auth/AuthContext";
 
-const ChatContainer = ({ selectedUser, setSelectedUser }) => {
-  const { authUser, onlineUsers } = useContext(AuthContext);
+const ChatContainer: React.FC = () => {
+  const { authUser, onlineUsers } = useAuth();
   const { messages, getMessages, selectedUser, sendMessage, setSelectedUser } =
-    useContext(ChatContext);
+    useChat();
 
-  const [input, setInput] = useState([]);
-  const scrollEnd = React.useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState("");
+  const scrollEnd = useRef<HTMLDivElement>(null);
 
-  const handleSendMessage = async (e) => {
+  const handleSendMessage = async (
+    e: React.FormEvent | React.KeyboardEvent | React.MouseEvent
+  ) => {
     e.preventDefault();
-    if (input.trim()) return;
+    if (!input.trim()) return;
 
     const messageData = {
       text: input.trim(),
@@ -25,8 +27,8 @@ const ChatContainer = ({ selectedUser, setSelectedUser }) => {
     setInput("");
   };
 
-  const handleSendImage = async (e) => {
-    const file = e.target.files[0];
+  const handleSendImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) {
       toast.error("Please select a valid image file.");
       return;
@@ -34,10 +36,11 @@ const ChatContainer = ({ selectedUser, setSelectedUser }) => {
 
     const reader = new FileReader();
     reader.onloadend = async () => {
-      const messageData = {
-        image: reader.result,
-      };
-      await sendMessage(messageData);
+      const image =
+        typeof reader.result === "string" ? reader.result : undefined;
+      if (image) {
+        await sendMessage({ image });
+      }
       e.target.value = "";
     };
 
@@ -55,16 +58,17 @@ const ChatContainer = ({ selectedUser, setSelectedUser }) => {
       scrollEnd.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
   return selectedUser ? (
     <div className="h-full overflow-scroll relative backdrop-blur-lg">
       <div className="flex item-center gap-3 py-3 mx-4 border-b border-stone-500">
         <img
-          src={selectedUser?.profilePic ?? assets.avatar_icon}
+          src={selectedUser?.profilePic || assets.avatar_icon}
           alt=""
           className="w-8 rounded-full"
         />
         <p className="flex-1 text-lg text-white flex items-center gap-2">
-          {selectedUser?.fullName}
+          {selectedUser?.fullname}
           {onlineUsers.includes(selectedUser._id) ? (
             <span className="text-green-400 text-xs">Online</span>
           ) : null}
@@ -75,7 +79,13 @@ const ChatContainer = ({ selectedUser, setSelectedUser }) => {
           className="md:hidden max-w-7"
           onClick={() => setSelectedUser(null)}
         />
-        <img src={assets.help_icon} alt="" className="max-md:hidden max-w-5" />
+        <div className="flex items-center">
+          <img
+            src={assets.help_icon}
+            alt=""
+            className="max-md:hidden max-w-5"
+          />
+        </div>
       </div>
       <div className="flex flex-col h-[calc(100%-120px)] overflow-y-scroll p-3 pb-6">
         {messages.map((message, index) => (
@@ -158,7 +168,7 @@ const ChatContainer = ({ selectedUser, setSelectedUser }) => {
       </div>
     </div>
   ) : (
-    <div className="flex flex-col item-center justify-center gap-2 text-gray-500 bg-white/10 max-md:hidden">
+    <div className="flex flex-col items-center justify-center gap-2 text-gray-500 bg-white/10 max-md:hidden">
       <img src={assets.logo_icon} alt="" className="max-w-16" />
       <div className="text-lg font-medium text-white">
         Chat anytime, anywhere

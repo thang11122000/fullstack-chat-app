@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { messageService } from "../services/messageService";
 import { ResponseHelper } from "../utils/response";
 import { asyncHandler } from "../middleware/errorHandler";
+import { onlineUsers } from "../socket/socketHandlers";
+import { io } from "..";
 
 export const getUsersForSidebar = asyncHandler(
   async (req: Request, res: Response) => {
@@ -53,6 +55,12 @@ export const sendMessage = asyncHandler(async (req: Request, res: Response) => {
     text,
     image,
   });
+
+  if (onlineUsers.has(receiverId)) {
+    for (const socketId of onlineUsers.get(receiverId)!) {
+      io.to(socketId).emit("message_received", message);
+    }
+  }
 
   return ResponseHelper.created(res, { message }, "Message sent successfully");
 });
