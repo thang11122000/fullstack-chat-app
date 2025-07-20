@@ -25,27 +25,7 @@ dotenv.config();
 const numCPUs = os.cpus().length;
 const isProduction = process.env.NODE_ENV === "production";
 
-if (cluster.isPrimary && isProduction) {
-  logger.info(`Master ${process.pid} is running`);
-
-  // Fork workers
-  for (let i = 0; i < numCPUs; i++) {
-    cluster.fork();
-  }
-
-  cluster.on("exit", (worker, code, signal) => {
-    logger.warn(`Worker ${worker.process.pid} died`);
-    // Replace the dead worker
-    cluster.fork();
-  });
-
-  // Monitor cluster health
-  setInterval(() => {
-    const workers = Object.values(cluster.workers || {});
-    logger.info(`Active workers: ${workers.length}`);
-  }, 30000);
-} else {
-  // Worker process
+function createApp() {
   const app = express();
   const server = createServer(app);
 
@@ -274,49 +254,38 @@ if (cluster.isPrimary && isProduction) {
     logger.error("Failed to connect to Redis:", err);
   });
 
-  // Graceful shutdown
-  const gracefulShutdown = async (signal: string) => {
-    logger.info(`${signal} received, shutting down gracefully`);
-
-    // Close Redis connection
-    await redisService.disconnect();
-
-    // Đóng kết nối MongoDB
-    await disconnectMongo();
-
-    // Close server
-    server.close(() => {
-      logger.info("Process terminated");
-      process.exit(0);
-    });
-
-    // Force exit after 30 seconds
-    setTimeout(() => {
-      logger.error(
-        "Could not close connections in time, forcefully shutting down"
-      );
-      process.exit(1);
-    }, 30000);
-  };
-
-  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-
-  // Handle uncaught exceptions
-  process.on("uncaughtException", (error) => {
-    logger.error("Uncaught Exception:", error);
-    gracefulShutdown("UNCAUGHT_EXCEPTION");
-  });
-
-  process.on("unhandledRejection", (reason, promise) => {
-    logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
-    gracefulShutdown("UNHANDLED_REJECTION");
-  });
-
-  // Start server
-  server.listen(PORT, () => {
-    logger.info(`Worker ${process.pid} started on port ${PORT}`);
-    logger.info(`Socket.io server ready`);
-    logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
-  });
+  return app;
 }
+
+const isVercel = !!process.env.VERCEL;
+let app: express.Express | undefined = undefined;
+
+if (isVercel) {
+  app = createApp();
+} else {
+  if (cluster.isPrimary && isProduction) {
+    logger.info(`Master ${process.pid} is running`);
+    for (let i = 0; i < numCPUs; i++) {
+      cluster.fork();
+    }
+    cluster.on("exit", (worker, code, signal) => {
+      logger.warn(`Worker ${worker.process.pid} died`);
+      cluster.fork();
+    });
+    setInterval(() => {
+      const workers = Object.values(cluster.workers || {});
+      logger.info(`Active workers: ${workers.length}`);
+    }, 30000);
+  } else {
+    app = createApp();
+    const server = createServer(app);
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, () => {
+      logger.info(`Worker ${process.pid} started on port ${PORT}`);
+      logger.info(`Socket.io server ready`);
+      logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
+    });
+  }
+}
+
+export default app;
