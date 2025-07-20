@@ -9,8 +9,10 @@ import { errorHandler } from "./middleware/errorHandler";
 import { logger } from "./utils/logger";
 import { redisService } from "./lib/redis";
 import os from "os";
+import { connectMongo } from "./lib/mongo";
 
 export function createApp() {
+  connectMongo();
   const app = express();
 
   // Enhanced security middleware
