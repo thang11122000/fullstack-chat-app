@@ -107,6 +107,13 @@ export function createApp() {
   app.use("/api/auth", authLimiter, authRoutes);
   app.use("/api/messages", messageRoutes);
 
+  app.get("/", (req, res) => {
+    res.json({
+      message: "Server is running!",
+      status: true,
+    });
+  });
+
   app.get("/api/health", async (req, res) => {
     try {
       const startTime = Date.now();
@@ -178,4 +185,4 @@ export function createApp() {
   app.use(errorHandler);
 
   return app;
-} 
+}
