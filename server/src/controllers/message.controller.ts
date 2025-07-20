@@ -73,12 +73,8 @@ export const sendMessage = asyncHandler(async (req: Request, res: Response) => {
 
   // Emit message to online receiver
   const socketService = SocketService.getInstance();
-  console.log("SocketService instance:", socketService);
-  console.log("Receiver ID:", receiverId);
-  console.log("Is receiver online:", socketService?.isUserOnline(receiverId));
 
   if (socketService && socketService.isUserOnline(receiverId)) {
-    console.log("Emitting message to receiver:", receiverId);
     socketService.emitToOnlineUsers([receiverId], "message_received", message);
   } else {
     console.log("Receiver not online or SocketService not available");

@@ -269,8 +269,6 @@ if (cluster.isPrimary && isProduction) {
   socketService.initializeSocketHandlers();
 
   // Log to verify SocketService is initialized
-  console.log("SocketService initialized:", socketService);
-
   // Redis connection
   redisService.connect().catch((err) => {
     logger.error("Failed to connect to Redis:", err);
