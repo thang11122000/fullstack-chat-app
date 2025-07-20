@@ -34,8 +34,8 @@ class Logger {
     // Console output
     console.log(formattedMessage);
 
-    // File output (only in production)
-    if (process.env.NODE_ENV === "production") {
+    const isVercel = !!process.env.VERCEL;
+    if (process.env.NODE_ENV === "production" && !isVercel) {
       const logFile = join(this.logDir, `${level.toLowerCase()}.log`);
       const stream = createWriteStream(logFile, { flags: "a" });
       stream.write(formattedMessage + "\n");
