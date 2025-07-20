@@ -1,4 +1,5 @@
 import { Server, Socket } from "socket.io";
+import jwt from "jsonwebtoken";
 import { userService } from "./userService";
 import { messageService } from "./messageService";
 import { logger } from "../utils/logger";
@@ -33,16 +34,58 @@ export interface ReadReceiptData {
 export class SocketService {
   private io: Server;
   private userSocketMap: UserSocketMap = {};
+  private static instance: SocketService;
 
   constructor(io: Server) {
     this.io = io;
+    SocketService.instance = this;
+  }
+
+  // Static method to get the singleton instance
+  public static getInstance(): SocketService {
+    return SocketService.instance;
   }
 
   public initializeSocketHandlers(): void {
+    // Add authentication middleware
+    this.io.use(async (socket: AuthenticatedSocket, next) => {
+      const isAuthenticated = await this.authenticateSocket(socket);
+      if (!isAuthenticated) {
+        return next(new Error("Authentication error"));
+      }
+      next();
+    });
+
     this.io.on("connection", (socket: AuthenticatedSocket) => {
       this.handleUserConnection(socket);
       this.setupEventHandlers(socket);
     });
+  }
+
+  private async authenticateSocket(
+    socket: AuthenticatedSocket
+  ): Promise<boolean> {
+    try {
+      const token = socket.handshake.auth.token;
+      if (!token) {
+        return false;
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+      const userId = decoded.userId;
+
+      const user = await userService.getUserById(userId);
+      if (!user) {
+        return false;
+      }
+
+      socket.userId = userId;
+      socket.user = user;
+      return true;
+    } catch (error) {
+      logger.error("Socket authentication error:", error);
+      return false;
+    }
   }
 
   private handleUserConnection(socket: AuthenticatedSocket): void {
@@ -128,17 +171,12 @@ export class SocketService {
       });
 
       // Emit to sender
-      socket.emit("message_sent", {
-        message,
-        success: true,
-      });
+      socket.emit("message_sent", message);
 
       // Emit to receiver if online
       const receiverSocketId = this.userSocketMap[receiverId];
       if (receiverSocketId) {
-        this.io.to(receiverSocketId).emit("message_received", {
-          message,
-        });
+        this.io.to(receiverSocketId).emit("message_received", message);
       }
 
       logger.info(`Message sent from ${senderId} to ${receiverId}`);
@@ -228,15 +266,27 @@ export class SocketService {
 
   private broadcastOnlineUsers(): void {
     const onlineUsers = Object.keys(this.userSocketMap);
-    this.io.emit("online_users", onlineUsers);
+    this.io.emit("getOnlineUsers", onlineUsers);
   }
 
-  public getOnlineUsers(): string[] {
-    return Object.keys(this.userSocketMap);
+  // Method to emit message to online users
+  public emitToOnlineUsers(userIds: string[], event: string, data: any): void {
+    userIds.forEach((userId) => {
+      const socketId = this.userSocketMap[userId];
+      if (socketId) {
+        this.io.to(socketId).emit(event, data);
+      }
+    });
   }
 
+  // Method to check if user is online
   public isUserOnline(userId: string): boolean {
     return userId in this.userSocketMap;
+  }
+
+  // Method to get all online user IDs
+  public getOnlineUserIds(): string[] {
+    return Object.keys(this.userSocketMap);
   }
 
   public emitToUser(userId: string, event: string, data: any): boolean {

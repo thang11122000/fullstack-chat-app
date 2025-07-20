@@ -2,8 +2,7 @@ import { Request, Response } from "express";
 import { messageService } from "../services/messageService";
 import { ResponseHelper } from "../utils/response";
 import { asyncHandler } from "../middleware/errorHandler";
-import { onlineUsers } from "../socket/socketHandlers";
-import { io } from "..";
+import { SocketService } from "../services/socketService";
 
 export const getUsersForSidebar = asyncHandler(
   async (req: Request, res: Response) => {
@@ -22,7 +21,7 @@ export const getUsersForSidebar = asyncHandler(
 
 export const getMessages = asyncHandler(async (req: Request, res: Response) => {
   const { id: otherUserId } = req.params;
-  const { page = "1", limit = "50" } = req.query;
+  const { page = "1", limit = "500" } = req.query;
 
   const result = await messageService.getConversationMessages(
     req.user._id,
@@ -38,7 +37,23 @@ export const markMessagesAsSeen = asyncHandler(
   async (req: Request, res: Response) => {
     const { id: messageId } = req.params;
 
+    // Get message first to get senderId
+    const message = await messageService.getMessageById(messageId);
+    if (!message) {
+      return ResponseHelper.error(res, "Message not found", 404);
+    }
+
+    // Mark message as seen
     await messageService.markSingleMessageAsSeen(messageId, req.user._id);
+
+    // Emit read receipt to message sender if online
+    const socketService = SocketService.getInstance();
+    if (socketService && socketService.isUserOnline(message.senderId)) {
+      socketService.emitToOnlineUsers([message.senderId], "messages_read", {
+        messageIds: [messageId],
+        readBy: req.user._id,
+      });
+    }
 
     return ResponseHelper.success(res, null, "Message marked as seen");
   }
@@ -56,10 +71,17 @@ export const sendMessage = asyncHandler(async (req: Request, res: Response) => {
     image,
   });
 
-  if (onlineUsers.has(receiverId)) {
-    for (const socketId of onlineUsers.get(receiverId)!) {
-      io.to(socketId).emit("message_received", message);
-    }
+  // Emit message to online receiver
+  const socketService = SocketService.getInstance();
+  console.log("SocketService instance:", socketService);
+  console.log("Receiver ID:", receiverId);
+  console.log("Is receiver online:", socketService?.isUserOnline(receiverId));
+
+  if (socketService && socketService.isUserOnline(receiverId)) {
+    console.log("Emitting message to receiver:", receiverId);
+    socketService.emitToOnlineUsers([receiverId], "message_received", message);
+  } else {
+    console.log("Receiver not online or SocketService not available");
   }
 
   return ResponseHelper.created(res, { message }, "Message sent successfully");
@@ -69,7 +91,22 @@ export const deleteMessage = asyncHandler(
   async (req: Request, res: Response) => {
     const { id: messageId } = req.params;
 
+    // Get message first to get receiverId
+    const message = await messageService.getMessageById(messageId);
+    if (!message) {
+      return ResponseHelper.error(res, "Message not found", 404);
+    }
+
     await messageService.deleteMessage(messageId, req.user._id);
+
+    // Emit delete notification to receiver if online
+    const socketService = SocketService.getInstance();
+    if (socketService && socketService.isUserOnline(message.receiverId)) {
+      socketService.emitToOnlineUsers([message.receiverId], "message_deleted", {
+        messageId,
+        deletedBy: req.user._id,
+      });
+    }
 
     return ResponseHelper.success(res, null, "Message deleted successfully");
   }

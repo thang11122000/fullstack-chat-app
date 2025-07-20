@@ -80,13 +80,23 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const subscribeToMessages = useCallback(() => {
-    if (!socket) return;
+    if (!socket) {
+      console.log("Socket not available for message subscription");
+      return;
+    }
+    console.log("Subscribing to message_received events");
     socket.on("message_received", (newMessage: Message) => {
+      console.log("Received message:", newMessage);
+      console.log("Selected user:", selectedUser);
+      console.log("Message sender:", newMessage.senderId);
+
       if (selectedUser && selectedUser._id === newMessage.senderId) {
+        console.log("Adding message to current chat");
         newMessage.seen = true;
         setMessages((prev) => [...prev, newMessage]);
         axios.put(`/api/messages/mark-seen/${newMessage._id}`);
       } else {
+        console.log("Adding to unread messages");
         setUnreadMessages((prev) => ({
           ...prev,
           [newMessage.senderId]: (prev[newMessage.senderId] || 0) + 1,
@@ -109,9 +119,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const value: ChatContextType = {
     users,
-    setUsers,
     messages,
-    setMessages,
     unreadMessages,
     setUnreadMessages,
     selectedUser,

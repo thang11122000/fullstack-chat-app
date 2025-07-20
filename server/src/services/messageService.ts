@@ -119,14 +119,14 @@ export class MessageService {
   }> {
     try {
       // Generate cache key
-      const cacheKey = `conversation:${userId}:${otherUserId}:${page}:${limit}`;
+      // const cacheKey = `conversation:${userId}:${otherUserId}:${page}:${limit}`;
 
       // Try to get from cache first
-      const cached = await redisService.get(cacheKey);
-      if (cached) {
-        logger.info(`Cache hit for conversation: ${cacheKey}`);
-        return JSON.parse(cached);
-      }
+      // const cached = await redisService.get(cacheKey);
+      // if (cached) {
+      //   logger.info(`Cache hit for conversation: ${cacheKey}`);
+      //   return JSON.parse(cached);
+      // }
 
       // Validate that both users exist
       const [user, otherUser] = await Promise.all([
@@ -179,7 +179,7 @@ export class MessageService {
       };
 
       // Cache the result for 5 minutes
-      await redisService.set(cacheKey, JSON.stringify(result), 300);
+      // await redisService.set(cacheKey, JSON.stringify(result), 300);
 
       return result;
     } catch (error) {
@@ -211,6 +211,19 @@ export class MessageService {
       }
     } catch (error) {
       logger.error("Error marking messages as seen:", error);
+      throw error;
+    }
+  }
+
+  async getMessageById(messageId: string): Promise<MessageResponse | null> {
+    try {
+      const message = await Message.findById(messageId).lean();
+      if (!message) {
+        return null;
+      }
+      return this.formatMessageResponse(message);
+    } catch (error) {
+      logger.error("Error getting message by ID:", error);
       throw error;
     }
   }
