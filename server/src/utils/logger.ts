@@ -13,7 +13,7 @@ class Logger {
 
   constructor() {
     this.logDir = join(process.cwd(), "logs");
-    this.ensureLogDirectory();
+    // Đã bỏ gọi ensureLogDirectory() ở đây để tránh lỗi trên Vercel
   }
 
   private ensureLogDirectory(): void {
@@ -34,8 +34,10 @@ class Logger {
     // Console output
     console.log(formattedMessage);
 
+    // File output (chỉ khi KHÔNG chạy trên Vercel serverless)
     const isVercel = !!process.env.VERCEL;
     if (process.env.NODE_ENV === "production" && !isVercel) {
+      this.ensureLogDirectory(); // Chỉ tạo thư mục khi thực sự cần ghi file
       const logFile = join(this.logDir, `${level.toLowerCase()}.log`);
       const stream = createWriteStream(logFile, { flags: "a" });
       stream.write(formattedMessage + "\n");
