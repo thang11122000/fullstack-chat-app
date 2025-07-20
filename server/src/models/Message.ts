@@ -16,11 +16,13 @@ const messageSchema = new Schema<IMessage>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true, // Index for faster queries
     },
     receiverId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true, // Index for faster queries
     },
     text: {
       type: String,
@@ -32,6 +34,7 @@ const messageSchema = new Schema<IMessage>(
     seen: {
       type: Boolean,
       default: false,
+      index: true, // Index for unread messages queries
     },
   },
   {
@@ -39,6 +42,12 @@ const messageSchema = new Schema<IMessage>(
   }
 );
 
+// Compound indexes for better query performance
 messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
+messageSchema.index({ receiverId: 1, seen: 1, createdAt: -1 });
+messageSchema.index({ createdAt: -1 }); // For pagination
+
+// Text index for search functionality (if needed)
+// messageSchema.index({ text: "text" });
 
 export default mongoose.model<IMessage>("Message", messageSchema);

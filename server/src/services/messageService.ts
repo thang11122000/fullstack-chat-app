@@ -3,6 +3,7 @@ import User from "../models/User";
 import { createError } from "../middleware/errorHandler";
 import { logger } from "../utils/logger";
 import cloudinary from "../lib/cloudinary";
+import { redisService } from "../lib/redis";
 
 export interface CreateMessageData {
   senderId: string;
@@ -117,10 +118,20 @@ export class MessageService {
     };
   }> {
     try {
+      // Generate cache key
+      const cacheKey = `conversation:${userId}:${otherUserId}:${page}:${limit}`;
+
+      // Try to get from cache first
+      const cached = await redisService.get(cacheKey);
+      if (cached) {
+        logger.info(`Cache hit for conversation: ${cacheKey}`);
+        return JSON.parse(cached);
+      }
+
       // Validate that both users exist
       const [user, otherUser] = await Promise.all([
-        User.findById(userId),
-        User.findById(otherUserId),
+        User.findById(userId).lean(),
+        User.findById(otherUserId).lean(),
       ]);
 
       if (!user || !otherUser) {
@@ -129,7 +140,7 @@ export class MessageService {
 
       const skip = (page - 1) * limit;
 
-      // Get messages between the two users
+      // Get messages between the two users with lean() for better performance
       const [messages, total] = await Promise.all([
         Message.find({
           $or: [
@@ -140,13 +151,14 @@ export class MessageService {
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit)
-          .lean(),
+          .lean()
+          .exec(),
         Message.countDocuments({
           $or: [
             { senderId: userId, receiverId: otherUserId },
             { senderId: otherUserId, receiverId: userId },
           ],
-        }),
+        }).exec(),
       ]);
 
       // Mark messages as seen (only messages sent to the current user)
@@ -154,7 +166,7 @@ export class MessageService {
 
       const totalPages = Math.ceil(total / limit);
 
-      return {
+      const result = {
         messages: messages
           .reverse()
           .map((message) => this.formatMessageResponse(message)),
@@ -165,6 +177,11 @@ export class MessageService {
           totalPages,
         },
       };
+
+      // Cache the result for 5 minutes
+      await redisService.set(cacheKey, JSON.stringify(result), 300);
+
+      return result;
     } catch (error) {
       logger.error("Error getting conversation messages:", error);
       throw error;

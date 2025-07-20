@@ -4,42 +4,67 @@ import User from "../models/User";
 import Message from "../models/Message";
 import Chat from "../models/Chat";
 import mongoose from "mongoose";
+import { redisService } from "../lib/redis";
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
   user?: any;
 }
 
-// Khai báo biến toàn cục
 export const onlineUsers = new Map<string, Set<string>>();
+
+const userAuthCache = new Map<string, { user: any; timestamp: number }>();
+const AUTH_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 async function emitOnlineUsers(io: Server) {
   const userIds = Array.from(onlineUsers.keys());
   io.emit("getOnlineUsers", userIds);
 }
 
-export const setupSocketHandlers = (io: Server) => {
-  // Authentication middleware
-  io.use(async (socket: AuthenticatedSocket, next) => {
-    try {
-      const token = socket.handshake.auth.token;
-      console.log(token);
-      if (!token) {
-        return next(new Error("Authentication error"));
-      }
-
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-      const user = await User.findById(decoded.userId);
-      if (!user) {
-        return next(new Error("User not found"));
-      }
-
-      socket.userId = decoded.userId;
-      socket.user = user;
-      next();
-    } catch (error) {
-      next(new Error("Authentication error"));
+async function authenticateSocket(
+  socket: AuthenticatedSocket
+): Promise<boolean> {
+  try {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+      return false;
     }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    const userId = decoded.userId;
+
+    // Check cache first
+    const cached = userAuthCache.get(userId);
+    if (cached && Date.now() - cached.timestamp < AUTH_CACHE_TTL) {
+      socket.userId = userId;
+      socket.user = cached.user;
+      return true;
+    }
+
+    // If not in cache, fetch from database
+    const user = await User.findById(userId).lean();
+    if (!user) {
+      return false;
+    }
+
+    // Cache the user data
+    userAuthCache.set(userId, { user, timestamp: Date.now() });
+    socket.userId = userId;
+    socket.user = user;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+export const setupSocketHandlers = (io: Server) => {
+  // Authentication middleware with caching
+  io.use(async (socket: AuthenticatedSocket, next) => {
+    const isAuthenticated = await authenticateSocket(socket);
+    if (!isAuthenticated) {
+      return next(new Error("Authentication error"));
+    }
+    next();
   });
 
   io.on("connection", (socket: AuthenticatedSocket) => {
@@ -67,7 +92,7 @@ export const setupSocketHandlers = (io: Server) => {
       console.log(`User ${socket.user.username} left chat ${chatId}`);
     });
 
-    // Handle sending a message
+    // Handle sending a message with optimized operations
     socket.on(
       "send_message",
       async (data: {
@@ -102,17 +127,22 @@ export const setupSocketHandlers = (io: Server) => {
               lastMessage: message._id,
               lastMessageTime: new Date(),
             });
+            await chat.save();
           } else {
-            chat.lastMessage =
-              message._id as unknown as mongoose.Types.ObjectId;
+            // Update chat with optimized operations
+            chat.lastMessage = message._id as mongoose.Types.ObjectId;
             chat.lastMessageTime = new Date();
 
             // Update unread count for receiver
             const currentUnreadCount = chat.unreadCount.get(receiverId) || 0;
             chat.unreadCount.set(receiverId, currentUnreadCount + 1);
+
+            await chat.save();
           }
 
-          await chat.save();
+          // Invalidate cache for this conversation
+          const cacheKey = `conversation:${socket.userId}:${receiverId}:1:50`;
+          await redisService.del(cacheKey);
 
           // Emit message to both users
           io.to(socket.userId!).emit("message_sent", {
@@ -137,14 +167,14 @@ export const setupSocketHandlers = (io: Server) => {
       }
     );
 
-    // Handle marking messages as read
+    // Handle marking messages as read with batch operations
     socket.on(
       "mark_as_read",
       async (data: { chatId: string; messageIds: string[] }) => {
         try {
           const { chatId, messageIds } = data;
 
-          // Update messages as read
+          // Update messages as read with batch operation
           await Message.updateMany(
             {
               _id: { $in: messageIds },
@@ -176,6 +206,10 @@ export const setupSocketHandlers = (io: Server) => {
               });
             }
           }
+
+          // Invalidate cache
+          const cacheKey = `conversation:${socket.userId}:${chatId}:1:50`;
+          await redisService.del(cacheKey);
         } catch (error) {
           console.error("Error marking messages as read:", error);
           socket.emit("error", { message: "Failed to mark messages as read" });
