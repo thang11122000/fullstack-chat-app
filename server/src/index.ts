@@ -31,7 +31,20 @@ if (!isVercel) {
     // Khởi tạo Socket.IO server
     const io = new Server(server, {
       cors: {
-        origin: process.env.CLIENT_URL || "http://localhost:5173",
+        origin:
+          process.env.NODE_ENV === "development"
+            ? true
+            : (origin, callback) => {
+                if (!origin) return callback(null, true);
+
+                const allowedOrigins = process.env.CLIENT_URL?.split(",") || [];
+
+                if (allowedOrigins.indexOf(origin) !== -1) {
+                  callback(null, true);
+                } else {
+                  callback(new Error("Not allowed by CORS"));
+                }
+              },
         credentials: true,
         methods: ["GET", "POST"],
       },
