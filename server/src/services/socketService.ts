@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { userService } from "./userService";
 import { messageService } from "./messageService";
 import { logger } from "../utils/logger";
-import { AppError } from "@/middleware/errorHandler";
+import { AppError } from "../middleware/errorHandler";
 
 export interface AuthenticatedSocket extends Socket {
   userId?: string;
