@@ -3,6 +3,8 @@ import cors from "cors";
 import compression from "compression";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import path from "path";
+import expressStaticGzip from "express-static-gzip";
 import authRoutes from "./routes/auth";
 import messageRoutes from "./routes/message";
 import { errorHandler } from "./middleware/errorHandler";
@@ -55,7 +57,20 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: process.env.CLIENT_URL,
+      origin:
+        process.env.NODE_ENV === "development"
+          ? true
+          : (origin, callback) => {
+              if (!origin) return callback(null, true);
+
+              const allowedOrigins = process.env.CLIENT_URL?.split(",") || [];
+
+              if (allowedOrigins.indexOf(origin) !== -1) {
+                callback(null, true);
+              } else {
+                callback(new Error("Not allowed by CORS"));
+              }
+            },
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
@@ -64,13 +79,23 @@ export function createApp() {
 
   app.use(
     compression({
-      level: 6,
-      threshold: 1024,
+      level: 9, // Tăng level nén từ 6 lên 9 (maximum)
+      threshold: 1024, // Chỉ nén files > 1KB
       filter: (req: any, res: any) => {
         if (req.headers["x-no-compression"]) {
           return false;
         }
-        return compression.filter(req, res);
+        // Nén các file types quan trọng
+        const compressible = compression.filter(req, res);
+        return compressible;
+      },
+      // Configure Brotli compression with proper options
+      brotli: {
+        params: {
+          // You can set Brotli parameters here using constants
+          // For example, quality level (0-11, higher = better compression but slower)
+          [require("zlib").constants.BROTLI_PARAM_QUALITY]: 11,
+        },
       },
     })
   );
@@ -108,6 +133,55 @@ export function createApp() {
 
   app.use("/api/auth", authLimiter, authRoutes);
   app.use("/api/messages", messageRoutes);
+
+  // Serve static files với compression headers
+  if (process.env.NODE_ENV === "production") {
+    const staticPath = path.join(__dirname, "../../client/dist");
+
+    // Serve pre-compressed files với express-static-gzip
+    app.use(
+      "/",
+      expressStaticGzip(staticPath, {
+        enableBrotli: true,
+        orderPreference: ["br", "gz"], // Ưu tiên Brotli trước
+        serveStatic: {
+          setHeaders: (res, path) => {
+            // Cache static assets for 1 year, except HTML
+            if (path.endsWith(".html")) {
+              res.setHeader(
+                "Cache-Control",
+                "no-cache, no-store, must-revalidate"
+              );
+              res.setHeader("Pragma", "no-cache");
+              res.setHeader("Expires", "0");
+            } else {
+              res.setHeader(
+                "Cache-Control",
+                "public, max-age=31536000, immutable"
+              );
+            }
+
+            // Security headers for static assets
+            res.setHeader("X-Content-Type-Options", "nosniff");
+            res.setHeader("X-Frame-Options", "DENY");
+          },
+        },
+        // Index fallback for SPA
+        index: false,
+      })
+    );
+
+    // Handle React Router - phải đặt sau static serving
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(staticPath, "index.html"), {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
+    });
+  }
 
   app.get("/", (req, res) => {
     res.json({
