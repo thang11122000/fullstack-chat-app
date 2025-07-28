@@ -1,13 +1,13 @@
-# 💬 Chat Application Client
+# 💬 Chat Application - Frontend
 
-Modern React-based client cho ứng dụng chat real-time với giao diện đẹp và hiệu suất cao.
+Modern React-based client for the real-time chat application with beautiful UI and high performance.
 
-## 🎨 Tech Stack
+## 🎨 Technology Stack
 
 ### Core Technologies
 
-- **Framework**: React 19 với TypeScript
-- **Build Tool**: Vite 7 với HMR
+- **Framework**: React 19 with TypeScript
+- **Build Tool**: Vite 7 with HMR
 - **Styling**: Tailwind CSS 4
 - **Routing**: React Router DOM 7
 - **Real-time**: Socket.IO Client
@@ -16,7 +16,7 @@ Modern React-based client cho ứng dụng chat real-time với giao diện đ�
 
 ### Development Tools
 
-- **Linting**: ESLint 9 với TypeScript support
+- **Linting**: ESLint 9 with TypeScript support
 - **Type Checking**: TypeScript 5.8
 - **Bundle Analysis**: Rollup Plugin Visualizer
 - **Compression**: Vite Plugin Compression
@@ -25,7 +25,7 @@ Modern React-based client cho ứng dụng chat real-time với giao diện đ�
 
 ### 🔐 Authentication
 
-- User registration và login
+- User registration and login
 - JWT token management
 - Protected routes
 - Persistent authentication state
@@ -48,7 +48,7 @@ Modern React-based client cho ứng dụng chat real-time với giao diện đ�
 
 ### 🚀 Performance Optimizations
 
-- Code splitting và lazy loading
+- Code splitting and lazy loading
 - Bundle compression (Gzip/Brotli)
 - Image optimization
 - Efficient re-rendering
@@ -66,7 +66,7 @@ npm >= 8.0.0
 ### Setup
 
 ```bash
-# Clone và navigate
+# Clone and navigate
 git clone <repository-url>
 cd chat-app/client
 
@@ -79,12 +79,12 @@ cp .env.example .env
 
 ### Environment Configuration
 
-Tạo file `.env`:
+Create `.env` file:
 
 ```env
 # API Configuration
-VITE_API_URL=http://localhost:3000
-VITE_SOCKET_URL=http://localhost:3000
+VITE_API_URL=http://localhost:5000
+VITE_SOCKET_URL=http://localhost:5000
 
 # App Configuration
 VITE_APP_NAME=Chat App
@@ -103,7 +103,7 @@ VITE_DEBUG=false
 npm run dev
 ```
 
-Server sẽ chạy tại `http://localhost:5173`
+Server will run at `http://localhost:5173`
 
 ### Production Build
 
@@ -118,10 +118,10 @@ npm run preview
 ### Build Analysis
 
 ```bash
-# Build với bundle analysis
+# Build with bundle analysis
 npm run build:analyze
 
-# Build với compression report
+# Build with compression report
 npm run build:report
 ```
 
@@ -145,14 +145,13 @@ client/
 │   └── vite.svg
 ├── src/
 │   ├── components/          # Reusable UI components
-│   │   ├── ui/             # Basic UI components
-│   │   ├── chat/           # Chat-specific components
-│   │   └── auth/           # Authentication components
+│   │   ├── ChatContainer.tsx
+│   │   ├── Sidebar.tsx
+│   │   └── RightSidebar.tsx
 │   ├── pages/              # Page components
-│   │   ├── Home.tsx
-│   │   ├── Login.tsx
-│   │   ├── Register.tsx
-│   │   └── Chat.tsx
+│   │   ├── Homepage.tsx
+│   │   ├── LoginPage.tsx
+│   │   └── Profile.tsx
 │   ├── context/            # React Context providers
 │   │   ├── auth/           # Authentication context
 │   │   └── chat/           # Chat context
@@ -180,29 +179,12 @@ client/
 ```typescript
 // context/auth/AuthProvider.tsx
 interface AuthContextType {
-  user: User | null;
+  authUser: User | null;
+  isAuthLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
+  signup: (userData: SignupData) => Promise<void>;
   logout: () => void;
-  loading: boolean;
-  error: string | null;
-}
-```
-
-### Chat Context
-
-```typescript
-// context/chat/ChatProvider.tsx
-interface ChatContextType {
-  messages: Message[];
-  users: User[];
-  onlineUsers: string[];
-  selectedUser: User | null;
-  sendMessage: (message: string, image?: File) => void;
-  selectUser: (user: User) => void;
-  markAsRead: (messageId: string) => void;
-  typing: boolean;
-  setTyping: (typing: boolean) => void;
+  updateProfile: (data: UpdateProfileData) => Promise<void>;
 }
 ```
 
@@ -270,37 +252,6 @@ export default {
 };
 ```
 
-### Component Styling Patterns
-
-```tsx
-// Consistent styling patterns
-const Button = ({ variant = "primary", size = "md", children, ...props }) => {
-  const baseClasses =
-    "font-medium rounded-lg transition-colors focus:outline-none focus:ring-2";
-
-  const variants = {
-    primary: "bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500",
-    secondary:
-      "bg-gray-200 hover:bg-gray-300 text-gray-900 focus:ring-gray-500",
-  };
-
-  const sizes = {
-    sm: "px-3 py-1.5 text-sm",
-    md: "px-4 py-2 text-base",
-    lg: "px-6 py-3 text-lg",
-  };
-
-  return (
-    <button
-      className={`${baseClasses} ${variants[variant]} ${sizes[size]}`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
-```
-
 ## 🔌 API Integration
 
 ### HTTP Client Setup
@@ -346,26 +297,34 @@ export const authService = {
     return response.data;
   },
 
-  async register(userData: RegisterData) {
-    const response = await api.post("/api/auth/register", userData);
+  async signup(userData: SignupData) {
+    const response = await api.post("/api/auth/signup", userData);
     return response.data;
   },
 
-  async getCurrentUser() {
-    const response = await api.get("/api/auth/me");
+  async checkAuth() {
+    const response = await api.get("/api/auth/check");
     return response.data;
   },
 };
 
 // services/messageService.ts
 export const messageService = {
-  async getMessages(chatId: string) {
-    const response = await api.get(`/api/messages/${chatId}`);
+  async getUsers() {
+    const response = await api.get("/api/messages/users");
     return response.data;
   },
 
-  async sendMessage(messageData: MessageData) {
-    const response = await api.post("/api/messages", messageData);
+  async getMessages(userId: string) {
+    const response = await api.get(`/api/messages/conversation/${userId}`);
+    return response.data;
+  },
+
+  async sendMessage(userId: string, messageData: MessageData) {
+    const response = await api.post(
+      `/api/messages/send/${userId}`,
+      messageData
+    );
     return response.data;
   },
 };
@@ -392,12 +351,13 @@ export const useAuth = () => {
 // hooks/useSocket.ts
 export const useSocket = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
-  const { user } = useAuth();
+  const { authUser } = useAuth();
 
   useEffect(() => {
-    if (user) {
+    if (authUser) {
+      const token = localStorage.getItem("token");
       const newSocket = io(SOCKET_URL, {
-        auth: { token: user.token },
+        auth: { token },
       });
 
       setSocket(newSocket);
@@ -406,39 +366,9 @@ export const useSocket = () => {
         newSocket.disconnect();
       };
     }
-  }, [user]);
+  }, [authUser]);
 
   return socket;
-};
-```
-
-### useLocalStorage Hook
-
-```typescript
-// hooks/useLocalStorage.ts
-export const useLocalStorage = <T>(key: string, initialValue: T) => {
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error);
-      return initialValue;
-    }
-  });
-
-  const setValue = (value: T | ((val: T) => T)) => {
-    try {
-      const valueToStore =
-        value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error);
-    }
-  };
-
-  return [storedValue, setValue] as const;
 };
 ```
 
@@ -448,18 +378,18 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
 
 ```typescript
 // Lazy loading pages
-const Home = lazy(() => import("./pages/Home"));
-const Chat = lazy(() => import("./pages/Chat"));
-const Login = lazy(() => import("./pages/Login"));
+const Homepage = lazy(() => import("./pages/Homepage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const Profile = lazy(() => import("./pages/Profile"));
 
 // App.tsx
 function App() {
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Homepage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </Suspense>
   );
@@ -474,7 +404,7 @@ const MessageList = memo(({ messages }: { messages: Message[] }) => {
   return (
     <div className="space-y-2">
       {messages.map((message) => (
-        <MessageItem key={message.id} message={message} />
+        <MessageItem key={message._id} message={message} />
       ))}
     </div>
   );
@@ -507,54 +437,6 @@ const ChatComponent = () => {
 };
 ```
 
-### Image Optimization
-
-```typescript
-// components/OptimizedImage.tsx
-interface OptimizedImageProps {
-  src: string;
-  alt: string;
-  className?: string;
-  placeholder?: string;
-}
-
-const OptimizedImage: React.FC<OptimizedImageProps> = ({
-  src,
-  alt,
-  className,
-  placeholder = "/placeholder.jpg",
-}) => {
-  const [imageSrc, setImageSrc] = useState(placeholder);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      setImageSrc(src);
-      setIsLoading(false);
-    };
-    img.src = src;
-  }, [src]);
-
-  return (
-    <div className={`relative ${className}`}>
-      <img
-        src={imageSrc}
-        alt={alt}
-        className={`transition-opacity duration-300 ${
-          isLoading ? "opacity-50" : "opacity-100"
-        }`}
-      />
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <LoadingSpinner size="sm" />
-        </div>
-      )}
-    </div>
-  );
-};
-```
-
 ## 🔧 Build Configuration
 
 ### Vite Configuration
@@ -577,265 +459,159 @@ export default defineConfig({
       algorithm: "brotliCompress",
       ext: ".br",
     }),
-    visualizer({
-      filename: "dist/stats.html",
-      open: true,
-      gzipSize: true,
-      brotliSize: true,
-    }),
-  ],
+    process.env.ANALYZE &&
+      visualizer({
+        filename: "dist/stats.html",
+        open: true,
+      }),
+  ].filter(Boolean),
   build: {
-    target: "esnext",
-    minify: "terser",
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ["react", "react-dom"],
           router: ["react-router-dom"],
           socket: ["socket.io-client"],
-          ui: ["react-hot-toast"],
         },
       },
     },
   },
-  server: {
-    port: 5173,
-    host: true,
-    proxy: {
-      "/api": {
-        target: "http://localhost:3000",
-        changeOrigin: true,
-      },
-    },
-  },
 });
 ```
 
-### TypeScript Configuration
+## 📱 Responsive Design
 
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@/components/*": ["./src/components/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/utils/*": ["./src/utils/*"]
-    }
-  },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+### Breakpoints
+
+```css
+/* Mobile First Approach */
+.container {
+  @apply px-4 mx-auto;
 }
+
+/* Tablet */
+@media (min-width: 768px) {
+  .container {
+    @apply px-6;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .container {
+    @apply px-8 max-w-7xl;
+  }
+}
+```
+
+### Component Responsiveness
+
+```tsx
+const ChatLayout = () => {
+  return (
+    <div className="flex h-screen">
+      {/* Sidebar - Hidden on mobile, visible on tablet+ */}
+      <div className="hidden md:flex md:w-1/4 lg:w-1/5">
+        <Sidebar />
+      </div>
+
+      {/* Main Chat - Full width on mobile */}
+      <div className="flex-1 flex flex-col">
+        <ChatContainer />
+      </div>
+
+      {/* Right Sidebar - Hidden on mobile/tablet, visible on desktop */}
+      <div className="hidden lg:flex lg:w-1/5">
+        <RightSidebar />
+      </div>
+    </div>
+  );
+};
 ```
 
 ## 🧪 Testing
 
-### Test Setup (Recommended)
-
-```bash
-# Install testing dependencies
-npm install -D @testing-library/react @testing-library/jest-dom @testing-library/user-event vitest jsdom
-```
-
-### Example Test
+### Unit Tests
 
 ```typescript
-// __tests__/components/Button.test.tsx
-import { render, screen, fireEvent } from "@testing-library/react";
-import { Button } from "../src/components/ui/Button";
+// __tests__/components/MessageItem.test.tsx
+import { render, screen } from "@testing-library/react";
+import MessageItem from "../MessageItem";
 
-describe("Button Component", () => {
-  it("renders correctly", () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByRole("button")).toBeInTheDocument();
+describe("MessageItem", () => {
+  const mockMessage = {
+    _id: "1",
+    text: "Hello World",
+    senderId: { _id: "user1", fullname: "John Doe" },
+    createdAt: new Date().toISOString(),
+  };
+
+  it("renders message text", () => {
+    render(<MessageItem message={mockMessage} />);
+    expect(screen.getByText("Hello World")).toBeInTheDocument();
   });
 
-  it("handles click events", () => {
-    const handleClick = vi.fn();
-    render(<Button onClick={handleClick}>Click me</Button>);
-
-    fireEvent.click(screen.getByRole("button"));
-    expect(handleClick).toHaveBeenCalledTimes(1);
+  it("displays sender name", () => {
+    render(<MessageItem message={mockMessage} />);
+    expect(screen.getByText("John Doe")).toBeInTheDocument();
   });
 });
 ```
 
-## 🐳 Deployment
+## 🚀 Deployment
 
-### Docker
+### Build for Production
 
-```dockerfile
-# Multi-stage build
-FROM node:18-alpine as builder
+```bash
+# Install dependencies
+npm ci
 
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+# Build the application
+npm run build
 
-COPY . .
-RUN npm run build
+# The dist/ folder contains the production build
+```
 
-# Production stage
-FROM nginx:alpine
+### Environment Variables for Production
 
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+```env
+VITE_API_URL=https://your-api-domain.com
+VITE_SOCKET_URL=https://your-api-domain.com
+VITE_APP_NAME=Chat App
+VITE_APP_VERSION=1.0.0
 ```
 
 ### Nginx Configuration
 
 ```nginx
-# nginx.conf
 server {
     listen 80;
-    server_name localhost;
-    root /usr/share/nginx/html;
+    server_name your-domain.com;
+    root /var/www/chat-app/dist;
     index index.html;
 
-    # Gzip compression
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-
-    # Handle client-side routing
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
+    location /api {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
     }
 }
 ```
 
-### Vercel Deployment
+## 📞 Support
 
-```json
-{
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
-}
-```
+For issues and questions:
 
-## 🔍 Troubleshooting
-
-### Common Issues
-
-#### Build Errors
-
-```bash
-# Clear node_modules và reinstall
-rm -rf node_modules package-lock.json
-npm install
-
-# Clear Vite cache
-rm -rf node_modules/.vite
-npm run dev
-```
-
-#### Socket Connection Issues
-
-```typescript
-// Debug socket connection
-const socket = io(SOCKET_URL, {
-  debug: true,
-  transports: ["websocket", "polling"],
-});
-
-socket.on("connect_error", (error) => {
-  console.error("Socket connection error:", error);
-});
-```
-
-#### Performance Issues
-
-```bash
-# Analyze bundle size
-npm run build:analyze
-
-# Check for memory leaks
-# Use React DevTools Profiler
-```
-
-## 📊 Bundle Analysis
-
-### Build Output Example
-
-```
-dist/
-├── assets/
-│   ├── index-a1b2c3d4.js      # Main bundle (120KB)
-│   ├── vendor-e5f6g7h8.js     # Vendor libs (180KB)
-│   ├── router-i9j0k1l2.js     # Router chunk (25KB)
-│   ├── socket-m3n4o5p6.js     # Socket.IO (45KB)
-│   └── index-q7r8s9t0.css     # Styles (15KB)
-├── index.html                  # Entry point
-└── stats.html                  # Bundle analyzer
-```
-
-### Performance Metrics
-
-- **First Contentful Paint**: < 1.5s
-- **Largest Contentful Paint**: < 2.5s
-- **Time to Interactive**: < 3.5s
-- **Bundle Size**: < 500KB (gzipped)
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow coding standards và conventions
-4. Write tests cho new features
-5. Commit changes (`git commit -m 'Add amazing feature'`)
-6. Push to branch (`git push origin feature/amazing-feature`)
-7. Open Pull Request
-
-### Code Style Guidelines
-
-- Use TypeScript cho type safety
-- Follow React best practices
-- Use functional components với hooks
-- Implement proper error boundaries
-- Write meaningful commit messages
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
+- Email: thangnd111220@gmail.com
+- GitHub: [@thang11122000](https://github.com/thang11122000)
 
 ---
 
-**Made with ❤️ using React và modern web technologies**
+⭐ If this project helped you, please give it a star!

@@ -1,52 +1,52 @@
-# 🚀 Chat Application Server
+# 🚀 Chat Application - Backend
 
-High-performance Node.js server cho ứng dụng chat real-time với khả năng xử lý hàng nghìn người dùng đồng thời.
+High-performance Node.js server for real-time chat application with capability to handle thousands of concurrent users.
 
-## 🏗️ Kiến trúc
+## 🏗️ Architecture
 
-### Tech Stack
+### Technology Stack
 
-- **Runtime**: Node.js 16+ với TypeScript
-- **Framework**: Express.js với Socket.IO
-- **Database**: MongoDB với Mongoose ODM
-- **Cache**: Redis với connection pooling
-- **Authentication**: JWT với bcrypt
+- **Runtime**: Node.js 16+ with TypeScript
+- **Framework**: Express.js with Socket.IO
+- **Database**: MongoDB with Mongoose ODM
+- **Cache**: Redis with connection pooling
+- **Authentication**: JWT with bcrypt
 - **File Upload**: Cloudinary integration
-- **Logging**: Winston với structured logging
-- **Process Management**: Node.js Cluster
+- **Logging**: Winston with structured logging
+- **Validation**: express-validator with Joi
 
-### Tính năng chính
+### Key Features
 
 #### 🔌 Real-time Communication
 
-- Socket.IO với WebSocket và polling fallback
-- Redis adapter cho horizontal scaling
-- Connection pooling và rate limiting
+- Socket.IO with WebSocket and polling fallback
+- Redis adapter for horizontal scaling
+- Connection pooling and rate limiting
 - Debounced typing indicators
 - Optimized event handling
 
 #### 🗄️ Database Optimization
 
 - MongoDB connection pooling (50 connections)
-- Compound indexes cho performance
-- Bulk operations và lean queries
-- Query monitoring và slow query detection
-- Automatic retry với exponential backoff
+- Compound indexes for performance
+- Bulk operations and lean queries
+- Query monitoring and slow query detection
+- Automatic retry with exponential backoff
 
 #### ⚡ Performance Features
 
-- Node.js clustering với load balancing
-- Redis caching với TTL
-- Message queue với batch processing
+- Node.js clustering with load balancing
+- Redis caching with TTL
+- Message queue with batch processing
 - Compression middleware
-- Rate limiting và security headers
+- Rate limiting and security headers
 
 #### 📊 Monitoring & Analytics
 
 - Real-time performance metrics
 - Health check endpoints
 - CPU, Memory, Database monitoring
-- Alert system với configurable thresholds
+- Alert system with configurable thresholds
 - Historical data storage
 
 ## 🛠️ Installation
@@ -63,7 +63,7 @@ npm >= 8.0.0
 ### Setup
 
 ```bash
-# Clone và navigate
+# Clone and navigate
 git clone <repository-url>
 cd chat-app/server
 
@@ -76,21 +76,19 @@ cp .env.example .env
 
 ### Environment Configuration
 
-Tạo file `.env`:
+Create `.env` file:
 
 ```env
 # Server Configuration
 NODE_ENV=development
-PORT=3000
+PORT=5000
 CLIENT_URL=http://localhost:5173
 
 # Database
-MONGODB_URI=mongodb://localhost:27017/chat-app
+MONGODB_URI=mongodb://localhost:27017/chatapp
 
 # Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=your_redis_password
+REDIS_URL=redis://localhost:6379
 
 # JWT
 JWT_SECRET=your_super_secret_jwt_key_here
@@ -142,13 +140,28 @@ npm test
 server/
 ├── src/
 │   ├── controllers/          # Route controllers
+│   │   ├── user.controller.ts
+│   │   └── message.controller.ts
 │   ├── middleware/           # Express middleware
+│   │   ├── auth.ts
+│   │   └── validation.ts
 │   ├── models/              # MongoDB models
+│   │   ├── User.ts
+│   │   ├── Message.ts
+│   │   └── Chat.ts
 │   ├── routes/              # API routes
+│   │   ├── auth.ts
+│   │   ├── message.ts
+│   │   └── chat.ts
 │   ├── services/            # Business logic
+│   │   └── socketService.ts
 │   ├── socket/              # Socket.IO handlers
+│   │   └── socketHandlers.ts
 │   ├── utils/               # Utility functions
+│   │   └── logger.ts
 │   ├── lib/                 # External integrations
+│   │   ├── redis.ts
+│   │   └── cloudinary.ts
 │   ├── app.ts               # Express app setup
 │   └── index.ts             # Server entry point
 ├── dist/                    # Compiled JavaScript
@@ -164,34 +177,41 @@ server/
 ### Authentication Endpoints
 
 ```
-POST /api/auth/register    # User registration
-POST /api/auth/login       # User login
-POST /api/auth/logout      # User logout
-GET  /api/auth/me          # Get current user
+POST /api/auth/signup       # User registration
+POST /api/auth/login        # User login
+POST /api/auth/logout       # User logout
+GET  /api/auth/check        # Check authentication status
+PUT  /api/auth/profile      # Update user profile
 ```
 
 ### Message Endpoints
 
 ```
-GET  /api/messages/:chatId      # Get messages for chat
-POST /api/messages              # Send new message
-PUT  /api/messages/:id/read     # Mark message as read
+GET  /api/messages/users                # Get users for sidebar
+GET  /api/messages/conversation/:id     # Get conversation messages
+POST /api/messages/send/:id             # Send message
+PUT  /api/messages/mark-seen/:id        # Mark message as read
+DELETE /api/messages/:id                # Delete message
+GET  /api/messages/unread-count         # Get unread messages count
 ```
 
-### User Endpoints
+### Chat Endpoints
 
 ```
-GET  /api/users                 # Get all users
-GET  /api/users/:id             # Get user by ID
-PUT  /api/users/:id             # Update user profile
+GET  /api/chat                          # Get user's chat list
+GET  /api/chat/:chatId/messages         # Get messages in chat
+POST /api/chat/create                   # Create new chat
+GET  /api/chat/users/search             # Search users
+PUT  /api/chat/:chatId/read             # Mark messages as read
+GET  /api/chat/unread-count             # Get unread count
 ```
 
 ### Health & Monitoring
 
 ```
-GET  /api/health               # System health check
-GET  /api/metrics              # Performance metrics
-GET  /api/queue/stats          # Message queue statistics
+GET  /api/health                        # System health check
+GET  /api/metrics                       # Performance metrics
+GET  /api/queue/stats                   # Message queue statistics
 ```
 
 ## 🔌 Socket.IO Events
@@ -219,6 +239,7 @@ GET  /api/queue/stats          # Message queue statistics
 "message_sent"; // Message successfully sent
 "message_received"; // New message received
 "messages_read"; // Messages marked as read
+"message_queued"; // Message queued for processing
 
 // Chat updates
 "chat_updated"; // Chat room updated
@@ -237,12 +258,13 @@ GET  /api/queue/stats          # Message queue statistics
 ```javascript
 {
   _id: ObjectId,
-  username: String (unique),
-  email: String (unique),
-  password: String (hashed),
+  fullname: String (required),
+  email: String (unique, required),
+  password: String (hashed, required),
   profilePic: String (optional),
-  isOnline: Boolean,
-  lastSeen: Date,
+  bio: String (optional),
+  isOnline: Boolean (default: false),
+  lastSeen: Date (default: Date.now),
   createdAt: Date,
   updatedAt: Date
 }
@@ -253,11 +275,25 @@ GET  /api/queue/stats          # Message queue statistics
 ```javascript
 {
   _id: ObjectId,
-  senderId: ObjectId (ref: User),
-  receiverId: ObjectId (ref: User),
-  text: String (optional),
+  senderId: ObjectId (ref: User, required),
+  receiverId: ObjectId (ref: User, required),
+  text: String (optional, max: 5000),
   image: String (optional),
-  seen: Boolean,
+  seen: Boolean (default: false),
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Chat Model
+
+```javascript
+{
+  _id: ObjectId,
+  participants: [ObjectId] (ref: User, required),
+  lastMessage: ObjectId (ref: Message),
+  lastMessageTime: Date (default: Date.now),
+  unreadCount: Map<String, Number>,
   createdAt: Date,
   updatedAt: Date
 }
@@ -273,7 +309,7 @@ messageSchema.index({ senderId: 1, createdAt: -1 });
 messageSchema.index({ receiverId: 1, createdAt: -1 });
 messageSchema.index({ createdAt: -1 });
 
-// Partial indexes
+// Partial indexes for unread messages
 messageSchema.index(
   { seen: 1, createdAt: -1 },
   { partialFilterExpression: { seen: false } }
@@ -281,6 +317,14 @@ messageSchema.index(
 
 // Text search index
 messageSchema.index({ text: "text" }, { weights: { text: 10 } });
+
+// Chat indexes
+chatSchema.index({ participants: 1 });
+chatSchema.index({ lastMessageTime: -1 });
+
+// User indexes
+userSchema.index({ email: 1 });
+userSchema.index({ isOnline: 1, lastSeen: -1 });
 ```
 
 ## ⚡ Performance Configuration
@@ -319,6 +363,38 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+
+// Redis adapter for scaling
+io.adapter(createAdapter(pubClient, subClient));
+```
+
+### Message Queue & Batch Processing
+
+```javascript
+// Batch processing configuration
+const BATCH_SIZE = 50;
+const BATCH_TIMEOUT = 100; // ms
+
+// Queue message for batch processing
+async function queueMessage(data) {
+  const chatId = `${data.senderId}_${data.receiverId}`;
+
+  if (!messageQueue.has(chatId)) {
+    messageQueue.set(chatId, []);
+  }
+
+  messageQueue.get(chatId).push(data);
+
+  // Process batch if size threshold reached
+  if (messageQueue.get(chatId).length >= BATCH_SIZE) {
+    return await processMessageBatch(chatId);
+  }
+
+  // Set timeout for processing remaining messages
+  setTimeout(() => {
+    processMessageBatch(chatId);
+  }, BATCH_TIMEOUT);
+}
 ```
 
 ## 📊 Monitoring
@@ -372,9 +448,78 @@ const io = new Server(server, {
 }
 ```
 
+## 🔒 Security Features
+
+### Authentication & Authorization
+
+```javascript
+// JWT middleware
+export const authMiddleware = (req, res, next) => {
+  const token = req.header("Authorization")?.replace("Bearer ", "");
+
+  if (!token) {
+    return res.status(401).json({ message: "Access denied" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.userId;
+    next();
+  } catch (error) {
+    res.status(401).json({ message: "Invalid token" });
+  }
+};
+```
+
+### Rate Limiting
+
+```javascript
+// Socket rate limiting
+const rateLimitMap = new Map();
+const RATE_LIMIT = { maxEvents: 100, windowMs: 60000 };
+
+function checkRateLimit(userId) {
+  const now = Date.now();
+  const userLimit = rateLimitMap.get(userId);
+
+  if (!userLimit || now > userLimit.resetTime) {
+    rateLimitMap.set(userId, {
+      count: 1,
+      resetTime: now + RATE_LIMIT.windowMs,
+    });
+    return true;
+  }
+
+  if (userLimit.count >= RATE_LIMIT.maxEvents) {
+    return false;
+  }
+
+  userLimit.count++;
+  return true;
+}
+```
+
+### Input Validation
+
+```javascript
+// Message validation
+const messageValidation = [
+  body("text")
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 1000 })
+    .withMessage("Message text must be between 1 and 1000 characters"),
+  body("image")
+    .optional()
+    .isString()
+    .withMessage("Image must be a valid base64 string"),
+];
+```
+
 ## 🐳 Deployment
 
-### Docker
+### Docker Configuration
 
 ```dockerfile
 FROM node:18-alpine
@@ -392,135 +537,194 @@ COPY . .
 RUN npm run build
 
 # Expose port
-EXPOSE 3000
+EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/api/health || exit 1
+  CMD curl -f http://localhost:5000/api/health || exit 1
 
 # Start application
 CMD ["npm", "start"]
 ```
 
-### PM2 Configuration
+### Docker Compose
+
+```yaml
+version: "3.8"
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/chatapp
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongo
+      - redis
+
+  mongo:
+    image: mongo:5.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:6.2-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mongo_data:
+  redis_data:
+```
+
+### Environment Variables for Production
+
+```env
+NODE_ENV=production
+PORT=5000
+CLIENT_URL=https://your-frontend-domain.com
+MONGODB_URI=mongodb://your-mongo-host:27017/chatapp
+REDIS_URL=redis://your-redis-host:6379
+JWT_SECRET=your-super-secure-jwt-secret
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+```
+
+## 🧪 Testing
+
+### Unit Tests
 
 ```javascript
-// ecosystem.config.js
-module.exports = {
-  apps: [
-    {
-      name: "chat-server",
-      script: "dist/index.js",
-      instances: "max",
-      exec_mode: "cluster",
-      env: {
-        NODE_ENV: "production",
-        PORT: 3000,
-      },
-      error_file: "./logs/err.log",
-      out_file: "./logs/out.log",
-      log_file: "./logs/combined.log",
-      time: true,
-    },
+// __tests__/controllers/auth.test.js
+describe("Auth Controller", () => {
+  describe("POST /api/auth/login", () => {
+    it("should login user with valid credentials", async () => {
+      const response = await request(app).post("/api/auth/login").send({
+        email: "test@example.com",
+        password: "password123",
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty("token");
+      expect(response.body).toHaveProperty("user");
+    });
+  });
+});
+```
+
+### Integration Tests
+
+```javascript
+// __tests__/socket/messaging.test.js
+describe("Socket Messaging", () => {
+  it("should send and receive messages", (done) => {
+    const client1 = io("http://localhost:5000");
+    const client2 = io("http://localhost:5000");
+
+    client2.on("message_received", (message) => {
+      expect(message.text).toBe("Hello World");
+      client1.disconnect();
+      client2.disconnect();
+      done();
+    });
+
+    client1.emit("send_message", {
+      receiverId: "user2",
+      text: "Hello World",
+    });
+  });
+});
+```
+
+## 📈 Performance Monitoring
+
+### Winston Logger Configuration
+
+```javascript
+// utils/logger.ts
+import winston from "winston";
+
+export const logger = winston.createLogger({
+  level: "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: "chat-app" },
+  transports: [
+    new winston.transports.File({ filename: "logs/error.log", level: "error" }),
+    new winston.transports.File({ filename: "logs/combined.log" }),
   ],
-};
-```
+});
 
-## 🔍 Troubleshooting
-
-### Common Issues
-
-#### High Memory Usage
-
-```bash
-# Check memory usage
-node --inspect dist/index.js
-
-# Enable garbage collection logging
-node --trace-gc dist/index.js
-```
-
-#### Database Connection Issues
-
-```bash
-# Check MongoDB connection
-mongosh mongodb://localhost:27017/chat-app
-
-# Monitor slow queries
-db.setProfilingLevel(2, { slowms: 100 })
-```
-
-#### Redis Connection Problems
-
-```bash
-# Test Redis connection
-redis-cli ping
-
-# Monitor Redis
-redis-cli monitor
-```
-
-### Performance Tuning
-
-#### Increase Batch Processing
-
-```javascript
-// config/performance.js
-export const PERFORMANCE_CONFIG = {
-  BATCH_SIZE: 100, // Default: 50
-  PROCESSING_INTERVAL: 50, // Default: 100ms
-  MAX_CONNECTIONS: 100, // Default: 50
-  REDIS_POOL_SIZE: 20, // Default: 10
-};
-```
-
-#### Database Optimization
-
-```javascript
-// Enable query logging
-mongoose.set("debug", true);
-
-// Use lean queries for read operations
-const messages = await Message.find(query).lean();
-
-// Use select to limit fields
-const users = await User.find().select("username email profilePic");
-```
-
-## 📝 Logging
-
-### Log Levels
-
-- `error`: System errors và exceptions
-- `warn`: Warning messages
-- `info`: General information
-- `debug`: Debug information (development only)
-
-### Log Format
-
-```json
-{
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "level": "info",
-  "message": "User connected",
-  "userId": "user123",
-  "socketId": "socket456",
-  "ip": "192.168.1.1"
+if (process.env.NODE_ENV !== "production") {
+  logger.add(
+    new winston.transports.Console({
+      format: winston.format.simple(),
+    })
+  );
 }
 ```
 
-## 🤝 Contributing
+### Metrics Collection
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+```javascript
+// utils/metrics.ts
+export class MetricsCollector {
+  private static instance: MetricsCollector;
+  private metrics = {
+    connections: 0,
+    messages: 0,
+    errors: 0,
+    responseTime: [],
+  };
 
-## 📄 License
+  static getInstance() {
+    if (!MetricsCollector.instance) {
+      MetricsCollector.instance = new MetricsCollector();
+    }
+    return MetricsCollector.instance;
+  }
 
-This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
+  incrementConnections() {
+    this.metrics.connections++;
+  }
+
+  incrementMessages() {
+    this.metrics.messages++;
+  }
+
+  addResponseTime(time: number) {
+    this.metrics.responseTime.push(time);
+    if (this.metrics.responseTime.length > 1000) {
+      this.metrics.responseTime.shift();
+    }
+  }
+
+  getMetrics() {
+    return {
+      ...this.metrics,
+      avgResponseTime: this.metrics.responseTime.reduce((a, b) => a + b, 0) / this.metrics.responseTime.length || 0,
+    };
+  }
+}
+```
+
+## 📞 Support
+
+For issues and questions:
+
+- Email: thangnd111220@gmail.com
+- GitHub: [@thang11122000](https://github.com/thang11122000)
 
 ---
 
-**Made with ❤️ for high-performance real-time applications**
+⭐ If this project helped you, please give it a star!
