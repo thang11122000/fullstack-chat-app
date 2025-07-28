@@ -301,8 +301,8 @@ This project is distributed under the MIT License. See `LICENSE` file for more i
 
 ## 📞 Contact
 
-- Email: your-email@example.com
-- GitHub: [@yourusername](https://github.com/yourusername)
+- Email: thangnd111220@gmail.com
+- GitHub: [@thang11122000](https://github.com/thang11122000)
 
 ---
 
