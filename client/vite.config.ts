@@ -51,14 +51,14 @@ export default defineConfig({
     // Nén CSS và JS - sử dụng esbuild (nhanh hơn terser)
     minify: "esbuild",
     // Tối ưu CSS
-    cssMinify: 'esbuild',
+    cssMinify: "esbuild",
     cssCodeSplit: true, // Enable CSS code splitting
     // Tăng chunk size warning
     chunkSizeWarningLimit: 1000,
     // Enable source maps cho production debugging (optional)
     sourcemap: false,
     // bfcache optimizations
-    target: 'esnext', // Modern browsers for better bfcache support
+    target: "esnext", // Modern browsers for better bfcache support
   },
   // Optimizations
   esbuild: {
@@ -66,5 +66,3 @@ export default defineConfig({
     drop: process.env.NODE_ENV === "production" ? ["console", "debugger"] : [],
   },
 });
-
-
