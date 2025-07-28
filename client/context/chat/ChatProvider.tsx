@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { ChatContext } from "./ChatContext";
 import type { ChatContextType, User, Message } from "./chat.types";
 import { isAxiosError } from "axios";
+import { useBfcacheOptimization } from "../../src/utils/bfcache";
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>([]);
@@ -15,6 +16,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const { socket, axios } = useContext(AuthContext)!;
+  const { registerSocketCleanup } = useBfcacheOptimization();
 
   const handleError = (error: unknown) => {
     if (isAxiosError(error)) {
@@ -112,10 +114,29 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     subscribeToMessages();
+
+    // Register cleanup for bfcache
+    const unregisterCleanup = registerSocketCleanup(() => {
+      console.log("Cleaning up chat socket listeners for bfcache");
+      unsubscribeFromMessages();
+    });
+
+    // Handle bfcache restoration
+    const handleBfcacheRestore = () => {
+      console.log("Restoring chat socket listeners after bfcache");
+      setTimeout(() => {
+        subscribeToMessages();
+      }, 100);
+    };
+
+    window.addEventListener("bfcache-restore", handleBfcacheRestore);
+
     return () => {
       unsubscribeFromMessages();
+      unregisterCleanup();
+      window.removeEventListener("bfcache-restore", handleBfcacheRestore);
     };
-  }, [subscribeToMessages, unsubscribeFromMessages]);
+  }, [subscribeToMessages, unsubscribeFromMessages, registerSocketCleanup]);
 
   const value: ChatContextType = {
     users,

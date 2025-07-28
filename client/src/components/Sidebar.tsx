@@ -23,8 +23,6 @@ const Sidebar: React.FC = () => {
     setUnreadMessages,
   } = useChat();
 
-  console.log(onlineUsers);
-
   const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);

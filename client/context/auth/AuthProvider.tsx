@@ -5,8 +5,14 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { io, Socket } from "socket.io-client";
 import type { AuthContextType, User, LoginCredentials } from "./auth.types";
+
+// Extend Socket type to include our custom cleanup function
+interface ExtendedSocket extends Socket {
+  _bfcacheCleanup?: () => void;
+}
 import { AuthContext } from "./AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useBfcacheOptimization } from "../../src/utils/bfcache";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 axios.defaults.baseURL = backendUrl;
@@ -17,10 +23,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [socket, setSocket] = useState<ExtendedSocket | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // bfcache optimization
+  const { registerSocketCleanup } = useBfcacheOptimization();
 
   const handleError = (error: unknown) => {
     if (axios.isAxiosError(error)) {
@@ -37,17 +46,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const connectSocket = useCallback(
     (userData: User) => {
       if (!userData || socket?.connected) return;
+
       const newSocket = io(backendUrl, {
         auth: { token },
-      });
+        // back-forward cache friendly options
+        autoConnect: true,
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: 5,
+      }) as ExtendedSocket;
+
       newSocket.connect();
       setSocket(newSocket);
+
       newSocket.on("getOnlineUsers", (users: string[]) => {
-        console.log(users);
         setOnlineUsers(users);
       });
+
+      // Register cleanup for back-forward cache
+      const unregisterCleanup = registerSocketCleanup(() => {
+        if (newSocket?.connected) {
+          console.log("Disconnecting socket for back-forward cache");
+          newSocket.disconnect();
+        }
+      });
+
+      // Listen for restoration
+      const handleRestore = () => {
+        if (newSocket && !newSocket.connected && userData) {
+          console.log("Restoring socket connection after back-forward cache");
+          setTimeout(() => {
+            newSocket.connect();
+          }, 100);
+        }
+      };
+
+      window.addEventListener("bfcache-restore-connections", handleRestore);
+
+      // Store cleanup functions
+      newSocket._bfcacheCleanup = () => {
+        unregisterCleanup();
+        window.removeEventListener(
+          "bfcache-restore-connections",
+          handleRestore
+        );
+      };
     },
-    [socket?.connected, token]
+    [socket?.connected, token, registerSocketCleanup]
   );
 
   const checkAuth = useCallback(async () => {
@@ -104,7 +150,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setOnlineUsers([]);
     axios.defaults.headers.common["Authorization"] = null;
     toast.success("Logged out successfully");
-    socket?.disconnect();
+
+    // Clean disconnect for back-forward cache
+    if (socket) {
+      if (socket._bfcacheCleanup) {
+        socket._bfcacheCleanup();
+      }
+      socket.disconnect();
+    }
+
     navigate("/login", { replace: true });
   }, [navigate, socket]);
 
