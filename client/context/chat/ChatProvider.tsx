@@ -5,7 +5,6 @@ import toast from "react-hot-toast";
 import { ChatContext } from "./ChatContext";
 import type { ChatContextType, User, Message } from "./chat.types";
 import { isAxiosError } from "axios";
-import { useBfcacheOptimization } from "../../src/utils/bfcache";
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>([]);
@@ -16,7 +15,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const { socket, axios } = useContext(AuthContext)!;
-  const { registerSocketCleanup } = useBfcacheOptimization();
+  // const { registerSocketCleanup } = useBfcacheOptimization();
 
   const handleError = (error: unknown) => {
     if (isAxiosError(error)) {
@@ -83,22 +82,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   const subscribeToMessages = useCallback(() => {
     if (!socket) {
-      console.log("Socket not available for message subscription");
       return;
     }
-    console.log("Subscribing to message_received events");
     socket.on("message_received", (newMessage: Message) => {
-      console.log("Received message:", newMessage);
-      console.log("Selected user:", selectedUser);
-      console.log("Message sender:", newMessage.senderId);
-
       if (selectedUser && selectedUser._id === newMessage.senderId) {
-        console.log("Adding message to current chat");
         newMessage.seen = true;
         setMessages((prev) => [...prev, newMessage]);
         axios.put(`/api/messages/mark-seen/${newMessage._id}`);
       } else {
-        console.log("Adding to unread messages");
         setUnreadMessages((prev) => ({
           ...prev,
           [newMessage.senderId]: (prev[newMessage.senderId] || 0) + 1,
@@ -107,36 +98,36 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [socket, selectedUser, axios]);
 
-  const unsubscribeFromMessages = useCallback(() => {
-    if (!socket) return;
-    socket.off("message_received");
-  }, [socket]);
+  // const unsubscribeFromMessages = useCallback(() => {
+  //   if (!socket) return;
+  //   socket.off("message_received");
+  // }, [socket]);
 
   useEffect(() => {
     subscribeToMessages();
 
-    // Register cleanup for bfcache
-    const unregisterCleanup = registerSocketCleanup(() => {
-      console.log("Cleaning up chat socket listeners for bfcache");
-      unsubscribeFromMessages();
-    });
+    // // Register cleanup for bfcache
+    // const unregisterCleanup = registerSocketCleanup(() => {
+    //   console.log("Cleaning up chat socket listeners for bfcache");
+    //   unsubscribeFromMessages();
+    // });
 
-    // Handle bfcache restoration
-    const handleBfcacheRestore = () => {
-      console.log("Restoring chat socket listeners after bfcache");
-      setTimeout(() => {
-        subscribeToMessages();
-      }, 100);
-    };
+    // // Handle bfcache restoration
+    // const handleBfcacheRestore = () => {
+    //   console.log("Restoring chat socket listeners after bfcache");
+    //   setTimeout(() => {
+    //     subscribeToMessages();
+    //   }, 100);
+    // };
 
-    window.addEventListener("bfcache-restore", handleBfcacheRestore);
+    // window.addEventListener("bfcache-restore", handleBfcacheRestore);
 
-    return () => {
-      unsubscribeFromMessages();
-      unregisterCleanup();
-      window.removeEventListener("bfcache-restore", handleBfcacheRestore);
-    };
-  }, [subscribeToMessages, unsubscribeFromMessages, registerSocketCleanup]);
+    // return () => {
+    //   unsubscribeFromMessages();
+    //   unregisterCleanup();
+    //   window.removeEventListener("bfcache-restore", handleBfcacheRestore);
+    // };
+  }, [subscribeToMessages]);
 
   const value: ChatContextType = {
     users,

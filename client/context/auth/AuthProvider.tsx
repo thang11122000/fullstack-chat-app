@@ -12,7 +12,6 @@ interface ExtendedSocket extends Socket {
 }
 import { AuthContext } from "./AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useBfcacheOptimization } from "../../src/utils/bfcache";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 axios.defaults.baseURL = backendUrl;
@@ -29,7 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   // bfcache optimization
-  const { registerSocketCleanup } = useBfcacheOptimization();
+  // const { registerSocketCleanup } = useBfcacheOptimization();
 
   const handleError = (error: unknown) => {
     if (axios.isAxiosError(error)) {
@@ -64,36 +63,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setOnlineUsers(users);
       });
 
-      // Register cleanup for back-forward cache
-      const unregisterCleanup = registerSocketCleanup(() => {
-        if (newSocket?.connected) {
-          console.log("Disconnecting socket for back-forward cache");
-          newSocket.disconnect();
-        }
-      });
+      // // Register cleanup for back-forward cache
+      // const unregisterCleanup = registerSocketCleanup(() => {
+      //   if (newSocket?.connected) {
+      //     console.log("Disconnecting socket for back-forward cache");
+      //     newSocket.disconnect();
+      //   }
+      // });
 
-      // Listen for restoration
-      const handleRestore = () => {
-        if (newSocket && !newSocket.connected && userData) {
-          console.log("Restoring socket connection after back-forward cache");
-          setTimeout(() => {
-            newSocket.connect();
-          }, 100);
-        }
-      };
+      // // Listen for restoration
+      // const handleRestore = () => {
+      //   if (newSocket && !newSocket.connected && userData) {
+      //     console.log("Restoring socket connection after back-forward cache");
+      //     setTimeout(() => {
+      //       newSocket.connect();
+      //     }, 100);
+      //   }
+      // };
 
-      window.addEventListener("bfcache-restore-connections", handleRestore);
+      // window.addEventListener("bfcache-restore-connections", handleRestore);
 
-      // Store cleanup functions
-      newSocket._bfcacheCleanup = () => {
-        unregisterCleanup();
-        window.removeEventListener(
-          "bfcache-restore-connections",
-          handleRestore
-        );
-      };
+      // // Store cleanup functions
+      // newSocket._bfcacheCleanup = () => {
+      //   unregisterCleanup();
+      //   window.removeEventListener(
+      //     "bfcache-restore-connections",
+      //     handleRestore
+      //   );
+      // };
     },
-    [socket?.connected, token, registerSocketCleanup]
+    [socket?.connected, token]
   );
 
   const checkAuth = useCallback(async () => {
