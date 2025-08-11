@@ -2,6 +2,10 @@
 
 High-performance real-time chat application built with React 19, Node.js, Socket.IO, and MongoDB.
 
+## 🌐 Live Demo
+
+🚀 **[Try the live demo here](https://frontend-chat-app-lilac.vercel.app/login)**
+
 ## ✨ Key Features
 
 ### 🔐 Authentication & Security
